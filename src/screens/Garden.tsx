@@ -3,12 +3,15 @@ import { MASCOTS, type MascotId } from '../mascots'
 import { speak, isMuted, setMuted } from '../lib/tts'
 import { unlockAudio } from '../lib/audio'
 import { Tree } from '../components/Tree'
-import { PankaAvatar } from '../components/PankaAvatar'
+import { PankaAvatarDressable } from '../components/PankaAvatarDressable'
 import { RewardOverlay } from '../components/RewardOverlay'
 import { useRewards } from '../hooks/useRewards'
+import type { EquippedItems } from '../lib/wardrobe'
 
 interface Props {
   mascotId: MascotId
+  equippedItems: EquippedItems
+  onOpenWardrobe: () => void
 }
 
 interface ModuleButtonProps {
@@ -70,7 +73,7 @@ function clampTreeLevel(n: number): TreeLevel {
   return n as TreeLevel
 }
 
-export function Garden({ mascotId }: Props) {
+export function Garden({ mascotId, equippedItems, onOpenWardrobe }: Props) {
   const mascot = MASCOTS.find(m => m.id === mascotId) ?? MASCOTS[0]
   const Illustration = mascot.Illustration
 
@@ -161,10 +164,19 @@ export function Garden({ mascotId }: Props) {
         <Tree level={treeLevel} />
       </div>
 
-      {/* ── Panka avatar (right side) ── */}
-      <div className="absolute bottom-[26%] right-[14%] w-24 h-48 lg:w-32 lg:h-64">
-        <PankaAvatar />
+      {/* ── Panka avatar (right side, dressable) ── */}
+      <div className="absolute bottom-[24%] right-[12%] w-24 h-48 lg:w-32 lg:h-64">
+        <PankaAvatarDressable equipped={equippedItems} />
       </div>
+
+      {/* ── Wardrobe icon (next to Panka) ── */}
+      <button
+        onClick={onOpenWardrobe}
+        className="absolute bottom-[22%] right-[5%] z-10 bg-white/80 active:bg-white rounded-2xl w-12 h-12 flex items-center justify-center text-2xl shadow-lg border-2 border-white/50 transition-transform active:scale-90"
+        aria-label="Ruhatár"
+      >
+        👗
+      </button>
 
       {/* ── TOP LEFT: Matek (active) ── */}
       <div className="absolute top-5 left-5">
@@ -177,7 +189,7 @@ export function Garden({ mascotId }: Props) {
         />
       </div>
 
-      {/* ── BOTTOM CENTER: Demo button (temporary, will go behind parental lock) ── */}
+      {/* ── BOTTOM CENTER: Demo button (temporary) ── */}
       <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-50">
         <button
           onClick={handleDemo}

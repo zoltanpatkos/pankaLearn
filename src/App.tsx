@@ -2,9 +2,17 @@ import { useEffect, useState } from 'react'
 import { MascotSelect } from './screens/MascotSelect'
 import { MascotConfirm } from './screens/MascotConfirm'
 import { Garden } from './screens/Garden'
+import { Wardrobe } from './screens/Wardrobe'
 import type { MascotId } from './mascots'
+import {
+  loadWardrobeState,
+  saveWardrobeState,
+  equipItem,
+  type WardrobeState,
+} from './lib/wardrobe'
+import type { WardrobeCategory } from './data/wardrobeItems'
 
-type Screen = 'mascot-select' | 'mascot-confirm' | 'garden'
+type Screen = 'mascot-select' | 'mascot-confirm' | 'garden' | 'wardrobe'
 
 async function enterFullscreen(): Promise<void> {
   if (document.fullscreenElement) return
@@ -23,6 +31,7 @@ export default function App() {
     () => (localStorage.getItem('mascot') ? 'garden' : 'mascot-select')
   )
   const [isFullscreen, setIsFullscreen] = useState(!!document.fullscreenElement)
+  const [wardrobeState, setWardrobeState] = useState<WardrobeState>(loadWardrobeState)
 
   useEffect(() => {
     const onChange = () => setIsFullscreen(!!document.fullscreenElement)
@@ -42,6 +51,12 @@ export default function App() {
     setScreen('garden')
   }
 
+  const handleEquip = (itemId: string, category: WardrobeCategory): void => {
+    const next = equipItem(itemId, category, wardrobeState)
+    setWardrobeState(next)
+    saveWardrobeState(next)
+  }
+
   const activeMascot = currentMascot ?? pendingMascot
 
   return (
@@ -57,10 +72,21 @@ export default function App() {
         />
       )}
       {screen === 'garden' && activeMascot && (
-        <Garden mascotId={activeMascot} />
+        <Garden
+          mascotId={activeMascot}
+          equippedItems={wardrobeState.equipped}
+          onOpenWardrobe={() => setScreen('wardrobe')}
+        />
+      )}
+      {screen === 'wardrobe' && activeMascot && (
+        <Wardrobe
+          wardrobeState={wardrobeState}
+          onBack={() => setScreen('garden')}
+          onEquip={handleEquip}
+        />
       )}
 
-      {/* Restore fullscreen button — shown when accidentally exited (Android back button) */}
+      {/* Restore fullscreen button */}
       {!isFullscreen && (
         <button
           onClick={enterFullscreen}
