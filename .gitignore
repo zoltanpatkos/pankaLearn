@@ -1,0 +1,14 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+dev-dist/
+
+# Local HTTPS certificates (never commit private keys)
+*.pem
+
+# Editor / OS
+.DS_Store
+Thumbs.db
+*.local

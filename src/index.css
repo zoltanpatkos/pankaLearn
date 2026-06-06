@@ -1,0 +1,21 @@
+@import "tailwindcss";
+
+@keyframes star-pop {
+  0%   { transform: scale(0);    opacity: 1; }
+  45%  { transform: scale(1.5);  opacity: 1; }
+  72%  { transform: scale(1);    opacity: 1; }
+  88%  { transform: scale(1.05); opacity: 1; }
+  100% { transform: scale(0.8);  opacity: 0; }
+}
+
+@keyframes flower-bloom {
+  0%   { transform: scale(0) rotate(-20deg); opacity: 0; }
+  55%  { transform: scale(1.2) rotate(4deg); opacity: 1; }
+  100% { transform: scale(1) rotate(0deg);   opacity: 1; }
+}
+
+@keyframes bounce-dance {
+  0%,  100% { transform: translateY(0)    rotate(0deg);  }
+  25%        { transform: translateY(-22px) rotate(9deg); }
+  75%        { transform: translateY(-11px) rotate(-9deg); }
+}
