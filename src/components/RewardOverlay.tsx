@@ -17,6 +17,20 @@ export function RewardOverlay({ type, rewardKey, mascotId }: Props): JSX.Element
   return (
     <div className="fixed inset-0 flex items-center justify-center pointer-events-none z-40">
 
+      {type === 'small' && (
+        <div key={rewardKey} className="flex gap-3 items-center">
+          {[0, 0.18, 0.36].map((delay, i) => (
+            <span
+              key={i}
+              className="text-[5rem] leading-none select-none"
+              style={{ animation: `star-pop 1s ease-out ${delay}s both` }}
+            >
+              ⭐
+            </span>
+          ))}
+        </div>
+      )}
+
       {type === 'micro' && (
         <span
           key={rewardKey}

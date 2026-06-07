@@ -4,7 +4,7 @@ import { speak } from '../lib/tts'
 import { getRandomPraise } from '../lib/praise'
 import { playErrorPitt, playBigMelody } from '../lib/audio'
 
-export type RewardType = 'micro' | 'medium' | 'big' | 'error' | null
+export type RewardType = 'micro' | 'small' | 'medium' | 'big' | 'error' | null
 
 interface UseRewardsOptions {
   onTreeLevelUp: () => void
@@ -14,6 +14,7 @@ export interface UseRewardsReturn {
   activeReward: RewardType
   rewardKey: number
   triggerMicro: () => void
+  triggerSmall: () => void
   triggerMedium: () => void
   triggerBig: () => void
   triggerError: () => void
@@ -68,6 +69,11 @@ export function useRewards({ onTreeLevelUp }: UseRewardsOptions): UseRewardsRetu
     speak(getRandomPraise('micro'))
   }, [activate])
 
+  const triggerSmall = useCallback((): void => {
+    activate('small', 2600)
+    speak(getRandomPraise('small'))
+  }, [activate])
+
   const triggerMedium = useCallback((): void => {
     activate('medium', 3200)
     fireMediumConfetti()
@@ -88,5 +94,5 @@ export function useRewards({ onTreeLevelUp }: UseRewardsOptions): UseRewardsRetu
     speak(getRandomPraise('error'))
   }, [activate])
 
-  return { activeReward, rewardKey, triggerMicro, triggerMedium, triggerBig, triggerError }
+  return { activeReward, rewardKey, triggerMicro, triggerSmall, triggerMedium, triggerBig, triggerError }
 }

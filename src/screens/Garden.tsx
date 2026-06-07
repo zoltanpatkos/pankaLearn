@@ -11,7 +11,9 @@ import type { EquippedItems } from '../lib/wardrobe'
 interface Props {
   mascotId: MascotId
   equippedItems: EquippedItems
+  mathFlowers: number
   onOpenWardrobe: () => void
+  onOpenMath: () => void
 }
 
 interface ModuleButtonProps {
@@ -73,7 +75,18 @@ function clampTreeLevel(n: number): TreeLevel {
   return n as TreeLevel
 }
 
-export function Garden({ mascotId, equippedItems, onOpenWardrobe }: Props) {
+const TULIP_SPOTS = [
+  { left: '5%',  bottom: '31%' },
+  { left: '9%',  bottom: '34%' },
+  { left: '6%',  bottom: '37%' },
+  { left: '13%', bottom: '32%' },
+  { left: '11%', bottom: '38%' },
+  { left: '16%', bottom: '35%' },
+  { left: '4%',  bottom: '40%' },
+  { left: '14%', bottom: '40%' },
+]
+
+export function Garden({ mascotId, equippedItems, mathFlowers, onOpenWardrobe, onOpenMath }: Props) {
   const mascot = MASCOTS.find(m => m.id === mascotId) ?? MASCOTS[0]
   const Illustration = mascot.Illustration
 
@@ -107,13 +120,9 @@ export function Garden({ mascotId, equippedItems, onOpenWardrobe }: Props) {
     if (!next) speak(mascot.gardenSpeech)
   }
 
-  const handleModuleClick = (name: string, active: boolean): void => {
+  const handleInactiveModule = (name: string): void => {
     unlockAudio()
-    if (active) {
-      speak(`Menjünk ${name}ozni!`)
-    } else {
-      speak(`${name} hamarosan jön!`)
-    }
+    speak(`${name} hamarosan jön!`)
   }
 
   const handleDemo = (): void => {
@@ -178,14 +187,25 @@ export function Garden({ mascotId, equippedItems, onOpenWardrobe }: Props) {
         👗
       </button>
 
+      {/* ── Math tulip bed (left grass) ── */}
+      {TULIP_SPOTS.slice(0, mathFlowers).map((pos, i) => (
+        <span
+          key={i}
+          className="absolute text-2xl leading-none select-none"
+          style={{ left: pos.left, bottom: pos.bottom }}
+        >
+          🌷
+        </span>
+      ))}
+
       {/* ── TOP LEFT: Matek (active) ── */}
       <div className="absolute top-5 left-5">
         <ModuleButton
-          emoji="🏪"
+          emoji="🔢"
           label="Matek"
           bg="bg-indigo-500"
           active
-          onClick={() => handleModuleClick('Matek', true)}
+          onClick={() => { unlockAudio(); onOpenMath() }}
         />
       </div>
 
@@ -213,7 +233,7 @@ export function Garden({ mascotId, equippedItems, onOpenWardrobe }: Props) {
           label="Olvasás"
           bg="bg-amber-500"
           active={false}
-          onClick={() => handleModuleClick('Olvasás', false)}
+          onClick={() => handleInactiveModule('Olvasás')}
         />
       </div>
 
@@ -224,7 +244,7 @@ export function Garden({ mascotId, equippedItems, onOpenWardrobe }: Props) {
           label="Írás"
           bg="bg-rose-500"
           active={false}
-          onClick={() => handleModuleClick('Írás', false)}
+          onClick={() => handleInactiveModule('Írás')}
         />
         <div className="w-14 h-14 rounded-2xl overflow-hidden shadow-lg border-2 border-white/60 bg-white/20">
           <Illustration />
@@ -238,7 +258,7 @@ export function Garden({ mascotId, equippedItems, onOpenWardrobe }: Props) {
           label="Angol"
           bg="bg-cyan-500"
           active={false}
-          onClick={() => handleModuleClick('Angol', false)}
+          onClick={() => handleInactiveModule('Angol')}
         />
       </div>
 
