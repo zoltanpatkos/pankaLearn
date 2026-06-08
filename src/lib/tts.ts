@@ -43,11 +43,22 @@ function getHungarianVoice(): SpeechSynthesisVoice | null {
   )
 }
 
-function makeU(text: string, rate: number, voice: SpeechSynthesisVoice | null): SpeechSynthesisUtterance {
+function getEnglishVoice(): SpeechSynthesisVoice | null {
+  const voices = window.speechSynthesis.getVoices()
+  return (
+    voices.find(v => v.lang === 'en-GB') ??
+    voices.find(v => v.lang === 'en-US') ??
+    voices.find(v => v.lang.startsWith('en')) ??
+    null
+  )
+}
+
+function makeU(text: string, rate: number, voice: SpeechSynthesisVoice | null, lang = 'hu-HU', volume = 1): SpeechSynthesisUtterance {
   const u = new SpeechSynthesisUtterance(text)
-  u.lang = 'hu-HU'
+  u.lang = lang
   u.rate = rate
   u.pitch = 1.1
+  u.volume = volume
   if (voice) u.voice = voice
   return u
 }
@@ -59,6 +70,8 @@ function silentPad(voice: SpeechSynthesisVoice | null): void {
   if (voice) pad.voice = voice
   window.speechSynthesis.speak(pad)
 }
+
+const delay = (ms: number): Promise<void> => new Promise(resolve => setTimeout(resolve, ms))
 
 export function speak(text: string): void {
   if (_muted) return
@@ -120,6 +133,97 @@ export function speakSyllabified(syllables: string[], word: string): void {
 
     if (!_muted && syllables.length > 1) await speakOne(word, 0.85)
     if (!_muted) silentPad(voice)
+  }
+
+  if (window.speechSynthesis.getVoices().length > 0) {
+    doSpeak()
+  } else {
+    window.speechSynthesis.addEventListener('voiceschanged', doSpeak, { once: true })
+  }
+}
+
+export function speakTPR(verb: string, hungarian: string): void {
+  if (_muted) return
+  window.speechSynthesis.cancel()
+
+  const doSpeak = async (): Promise<void> => {
+    const huVoice = getHungarianVoice()
+    const enVoice = getEnglishVoice()
+
+    const speakEn = (): Promise<void> =>
+      new Promise(resolve => {
+        const u = makeU(verb, 0.8, enVoice, 'en-GB')
+        u.onend = () => resolve()
+        window.speechSynthesis.speak(u)
+      })
+
+    await speakEn()
+    if (_muted) return
+    await delay(300)
+    if (_muted) return
+    await new Promise<void>(resolve => {
+      const u = makeU(hungarian, 0.85, huVoice, 'hu-HU', 0.45)
+      u.onend = () => resolve()
+      window.speechSynthesis.speak(u)
+    })
+    if (_muted) return
+    await delay(300)
+    if (_muted) return
+    await speakEn()
+    if (!_muted) silentPad(enVoice)
+  }
+
+  if (window.speechSynthesis.getVoices().length > 0) {
+    doSpeak()
+  } else {
+    window.speechSynthesis.addEventListener('voiceschanged', doSpeak, { once: true })
+  }
+}
+
+export function speakEnglish(text: string): void {
+  if (_muted) return
+  window.speechSynthesis.cancel()
+  const doSpeak = () => {
+    const voice = getEnglishVoice()
+    window.speechSynthesis.speak(makeU(text, 0.8, voice, 'en-GB'))
+    silentPad(voice)
+  }
+  if (window.speechSynthesis.getVoices().length > 0) {
+    doSpeak()
+  } else {
+    window.speechSynthesis.addEventListener('voiceschanged', doSpeak, { once: true })
+  }
+}
+
+const ENGLISH_PRAISES = [
+  'Good job!', 'Well done!', 'Excellent!', 'Perfect!', 'Great!',
+  'Amazing!', 'Awesome!', 'Fantastic!', 'Brilliant!', 'You did it!', 'Wow!', 'Yes!',
+]
+
+export function speakEnglishPraise(): void {
+  speakEnglish(ENGLISH_PRAISES[Math.floor(Math.random() * ENGLISH_PRAISES.length)])
+}
+
+export function speakBilingual(english: string, hungarian: string): void {
+  if (_muted) return
+  window.speechSynthesis.cancel()
+
+  const doSpeak = async (): Promise<void> => {
+    const huVoice = getHungarianVoice()
+    const enVoice = getEnglishVoice()
+
+    await new Promise<void>(resolve => {
+      const u = makeU(english, 0.75, enVoice, 'en-GB')
+      u.onend = () => resolve()
+      window.speechSynthesis.speak(u)
+    })
+    if (_muted) return
+    await new Promise<void>(resolve => {
+      const u = makeU(hungarian, 0.85, huVoice, 'hu-HU')
+      u.onend = () => resolve()
+      window.speechSynthesis.speak(u)
+    })
+    if (!_muted) silentPad(huVoice)
   }
 
   if (window.speechSynthesis.getVoices().length > 0) {

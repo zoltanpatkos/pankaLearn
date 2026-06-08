@@ -13,9 +13,11 @@ interface Props {
   equippedItems: EquippedItems
   mathFlowers: number
   readingFlowers: number
+  englishFlowers: number
   onOpenWardrobe: () => void
   onOpenMath: () => void
   onOpenReading: () => void
+  onOpenEnglish: () => void
 }
 
 interface ModuleButtonProps {
@@ -99,7 +101,18 @@ const SUNFLOWER_SPOTS = [
   { left: '31%', bottom: '40%' },
 ]
 
-export function Garden({ mascotId, equippedItems, mathFlowers, readingFlowers, onOpenWardrobe, onOpenMath, onOpenReading }: Props) {
+const POPPY_SPOTS = [
+  { left: '55%', bottom: '31%' },
+  { left: '59%', bottom: '34%' },
+  { left: '56%', bottom: '37%' },
+  { left: '63%', bottom: '32%' },
+  { left: '61%', bottom: '38%' },
+  { left: '67%', bottom: '35%' },
+  { left: '54%', bottom: '40%' },
+  { left: '65%', bottom: '40%' },
+]
+
+export function Garden({ mascotId, equippedItems, mathFlowers, readingFlowers, englishFlowers, onOpenWardrobe, onOpenMath, onOpenReading, onOpenEnglish }: Props) {
   const mascot = MASCOTS.find(m => m.id === mascotId) ?? MASCOTS[0]
   const Illustration = mascot.Illustration
 
@@ -222,6 +235,17 @@ export function Garden({ mascotId, equippedItems, mathFlowers, readingFlowers, o
         </span>
       ))}
 
+      {/* ── English poppy bed (center-right grass) ── */}
+      {POPPY_SPOTS.slice(0, englishFlowers).map((pos, i) => (
+        <span
+          key={i}
+          className="absolute text-2xl leading-none select-none"
+          style={{ left: pos.left, bottom: pos.bottom }}
+        >
+          🌺
+        </span>
+      ))}
+
       {/* ── TOP LEFT: Matek (active) ── */}
       <div className="absolute top-5 left-5">
         <ModuleButton
@@ -281,8 +305,8 @@ export function Garden({ mascotId, equippedItems, mathFlowers, readingFlowers, o
           emoji="✈️"
           label="Angol"
           bg="bg-cyan-500"
-          active={false}
-          onClick={() => handleInactiveModule('Angol')}
+          active
+          onClick={() => { unlockAudio(); onOpenEnglish() }}
         />
       </div>
 

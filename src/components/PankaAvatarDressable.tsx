@@ -241,13 +241,97 @@ function OutfitFairy(): JSX.Element {
   )
 }
 
+function OutfitBee(): JSX.Element {
+  return (
+    <g>
+      <defs>
+        <clipPath id="bee-clip">
+          <path d="M34 120 Q36 92 65 87 Q94 92 96 120 L96 212 Q65 224 34 212 Z" />
+        </clipPath>
+      </defs>
+      <ellipse cx="54" cy="256" rx="14" ry="7" fill="#1c1917" />
+      <ellipse cx="76" cy="256" rx="14" ry="7" fill="#1c1917" />
+      {/* Wings */}
+      <ellipse cx="16" cy="128" rx="18" ry="30" fill="#bae6fd" opacity="0.80" />
+      <ellipse cx="114" cy="128" rx="18" ry="30" fill="#bae6fd" opacity="0.80" />
+      <ellipse cx="16" cy="128" rx="10" ry="18" fill="white" opacity="0.4" />
+      <ellipse cx="114" cy="128" rx="10" ry="18" fill="white" opacity="0.4" />
+      {/* Yellow body */}
+      <path d="M34 120 Q36 92 65 87 Q94 92 96 120 L96 212 Q65 224 34 212 Z" fill="#fbbf24" />
+      {/* Black stripes clipped to body */}
+      <g clipPath="url(#bee-clip)">
+        <rect x="30" y="136" width="70" height="15" fill="#1c1917" />
+        <rect x="30" y="162" width="70" height="15" fill="#1c1917" />
+        <rect x="30" y="188" width="70" height="15" fill="#1c1917" />
+      </g>
+      {/* Collar */}
+      <path d="M44 116 Q65 109 86 116 L84 130 Q65 123 46 130 Z" fill="#1c1917" />
+    </g>
+  )
+}
+
 function renderOutfit(outfitId: string): JSX.Element {
   if (outfitId === 'outfit-princess')  return <OutfitPrincess />
   if (outfitId === 'outfit-ballerina') return <OutfitBallerina />
   if (outfitId === 'outfit-sporty')    return <OutfitSporty />
   if (outfitId === 'outfit-ladybug')   return <OutfitLadybug />
   if (outfitId === 'outfit-fairy')     return <OutfitFairy />
+  if (outfitId === 'outfit-bee')       return <OutfitBee />
   return <OutfitDefault />
+}
+
+// ── Footwear ──────────────────────────────────────────────────────────────────
+
+function FootwearSneakers(): JSX.Element {
+  return (
+    <g>
+      {/* Left sneaker */}
+      <ellipse cx="54" cy="251" rx="15" ry="8" fill="#f9fafb" stroke="#d1d5db" strokeWidth="1.5" />
+      <ellipse cx="54" cy="256" rx="15" ry="5" fill="#9ca3af" />
+      <path d="M42 250 L50 247 M56 247 L65 249" stroke="#3b82f6" strokeWidth="2" fill="none" strokeLinecap="round" />
+      {/* Right sneaker */}
+      <ellipse cx="76" cy="251" rx="15" ry="8" fill="#f9fafb" stroke="#d1d5db" strokeWidth="1.5" />
+      <ellipse cx="76" cy="256" rx="15" ry="5" fill="#9ca3af" />
+      <path d="M64 250 L72 247 M78 247 L87 249" stroke="#3b82f6" strokeWidth="2" fill="none" strokeLinecap="round" />
+    </g>
+  )
+}
+
+function FootwearHeels(): JSX.Element {
+  return (
+    <g>
+      {/* Left heel */}
+      <ellipse cx="56" cy="251" rx="13" ry="6" fill="#dc2626" />
+      <ellipse cx="56" cy="255" rx="13" ry="4" fill="#b91c1c" />
+      <rect x="41" y="249" width="3" height="9" rx="1" fill="#b91c1c" />
+      {/* Right heel */}
+      <ellipse cx="78" cy="251" rx="13" ry="6" fill="#dc2626" />
+      <ellipse cx="78" cy="255" rx="13" ry="4" fill="#b91c1c" />
+      <rect x="88" y="249" width="3" height="9" rx="1" fill="#b91c1c" />
+    </g>
+  )
+}
+
+function FootwearBoots(): JSX.Element {
+  return (
+    <g>
+      {/* Left boot shaft */}
+      <rect x="41" y="224" width="26" height="30" rx="7" fill="#92400e" />
+      {/* Left boot toe */}
+      <ellipse cx="54" cy="254" rx="14" ry="7" fill="#78350f" />
+      {/* Right boot shaft */}
+      <rect x="63" y="224" width="26" height="30" rx="7" fill="#92400e" />
+      {/* Right boot toe */}
+      <ellipse cx="76" cy="254" rx="14" ry="7" fill="#78350f" />
+    </g>
+  )
+}
+
+function renderFootwear(footwearId: string): JSX.Element | null {
+  if (footwearId === 'footwear-sneakers') return <FootwearSneakers />
+  if (footwearId === 'footwear-heels')    return <FootwearHeels />
+  if (footwearId === 'footwear-boots')    return <FootwearBoots />
+  return null
 }
 
 // ── Accessories ───────────────────────────────────────────────────────────────
@@ -308,12 +392,88 @@ function AccessoryBowBlue(): JSX.Element {
   )
 }
 
+function AccessoryCatEars(): JSX.Element {
+  return (
+    <g>
+      {/* Left ear */}
+      <polygon points="32,30 24,4 50,16" fill="#e879f9" />
+      <polygon points="34,27 29,8 47,17" fill="#fdf4ff" />
+      {/* Right ear */}
+      <polygon points="98,30 106,4 80,16" fill="#e879f9" />
+      <polygon points="96,27 101,8 83,17" fill="#fdf4ff" />
+    </g>
+  )
+}
+
+function AccessoryBaseballCap(): JSX.Element {
+  return (
+    <g>
+      {/* Cap body */}
+      <path d="M27 44 Q27 14 65 10 Q103 14 103 44 Q90 50 65 50 Q40 50 27 44 Z" fill="#2563eb" />
+      {/* Visor */}
+      <path d="M22 44 Q65 52 108 44 L106 50 Q65 58 24 50 Z" fill="#1d4ed8" />
+      {/* Button */}
+      <circle cx="65" cy="12" r="4" fill="#1e40af" />
+    </g>
+  )
+}
+
+function AccessoryNecklace(): JSX.Element {
+  return (
+    <g>
+      <path d="M46 100 Q65 112 84 100" stroke="#fbbf24" strokeWidth="2.5" fill="none" strokeLinecap="round" />
+      <circle cx="65" cy="113" r="5" fill="#fbbf24" />
+      <circle cx="65" cy="113" r="3" fill="#fde68a" />
+      <circle cx="65" cy="113" r="1.5" fill="#d97706" />
+    </g>
+  )
+}
+
+function AccessoryUmbrella(): JSX.Element {
+  return (
+    <g>
+      {/* Stick */}
+      <line x1="22" y1="173" x2="20" y2="106" stroke="#7c3aed" strokeWidth="3" strokeLinecap="round" />
+      {/* Canopy */}
+      <path d="M2 106 Q20 84 38 106" fill="#a855f7" />
+      <path d="M2 106 Q20 94 38 106" fill="#7c3aed" opacity="0.45" />
+      <line x1="2" y1="106" x2="38" y2="106" stroke="#7c3aed" strokeWidth="1.5" />
+      {/* Ribs */}
+      <line x1="20" y1="86" x2="2" y2="106" stroke="#7c3aed" strokeWidth="1" opacity="0.6" />
+      <line x1="20" y1="86" x2="38" y2="106" stroke="#7c3aed" strokeWidth="1" opacity="0.6" />
+      <line x1="20" y1="86" x2="20" y2="106" stroke="#7c3aed" strokeWidth="1" opacity="0.6" />
+      {/* Handle curve */}
+      <path d="M22 173 Q12 178 12 186 Q12 192 20 192" stroke="#7c3aed" strokeWidth="3" fill="none" strokeLinecap="round" />
+    </g>
+  )
+}
+
+function AccessoryBag(): JSX.Element {
+  return (
+    <g>
+      {/* Shoulder strap */}
+      <path d="M82 103 Q104 118 102 168" stroke="#d97706" strokeWidth="3" fill="none" strokeLinecap="round" />
+      {/* Bag body */}
+      <rect x="88" y="167" width="28" height="22" rx="5" fill="#fbbf24" stroke="#d97706" strokeWidth="1.5" />
+      {/* Flap */}
+      <path d="M88 167 Q102 161 116 167 L116 175 Q102 171 88 175 Z" fill="#f59e0b" />
+      {/* Clasp */}
+      <circle cx="102" cy="174" r="3" fill="#d97706" />
+    </g>
+  )
+}
+
 function renderAccessory(accessoryId: string): JSX.Element | null {
-  if (accessoryId === 'accessory-crown')    return <AccessoryCrown />
-  if (accessoryId === 'accessory-glasses')  return <AccessoryGlasses />
-  if (accessoryId === 'accessory-headband') return <AccessoryHeadband />
-  if (accessoryId === 'accessory-bow-red')  return <AccessoryBowRed />
-  if (accessoryId === 'accessory-bow-blue') return <AccessoryBowBlue />
+  if (accessoryId === 'accessory-crown')        return <AccessoryCrown />
+  if (accessoryId === 'accessory-glasses')      return <AccessoryGlasses />
+  if (accessoryId === 'accessory-headband')     return <AccessoryHeadband />
+  if (accessoryId === 'accessory-bow-red')      return <AccessoryBowRed />
+  if (accessoryId === 'accessory-bow-blue')     return <AccessoryBowBlue />
+  if (accessoryId === 'accessory-cat-ears')     return <AccessoryCatEars />
+  if (accessoryId === 'accessory-baseball-cap') return <AccessoryBaseballCap />
+  if (accessoryId === 'accessory-necklace')     return <AccessoryNecklace />
+  if (accessoryId === 'accessory-umbrella')     return <AccessoryUmbrella />
+  if (accessoryId === 'accessory-bag')          return <AccessoryBag />
   return null
 }
 
@@ -325,34 +485,37 @@ export function PankaAvatarDressable({
 }: Props): JSX.Element {
   return (
     <svg viewBox="0 0 130 260" xmlns="http://www.w3.org/2000/svg" className={className}>
-      {/* 1. Hair back (behind body) */}
+      {/* 1. Hair back */}
       {renderHairBack(equipped.hair)}
 
       {/* 2. Legs */}
       <rect x="44" y="210" width="20" height="44" rx="10" fill="#fde68a" />
       <rect x="66" y="210" width="20" height="44" rx="10" fill="#fde68a" />
 
-      {/* 3. Outfit (dress + shoes) */}
+      {/* 3. Outfit */}
       {renderOutfit(equipped.outfit)}
 
-      {/* 4. Left arm down */}
+      {/* 4. Footwear (on top of outfit feet) */}
+      {renderFootwear(equipped.footwear)}
+
+      {/* 5. Left arm down */}
       <path d="M38 128 Q26 152 23 170" stroke="#fde68a" strokeWidth="15" fill="none" strokeLinecap="round" />
       <circle cx="22" cy="173" r="9" fill="#fde68a" />
 
-      {/* 5. Right arm waving */}
+      {/* 6. Right arm waving */}
       <path d="M92 128 Q110 106 116 84" stroke="#fde68a" strokeWidth="15" fill="none" strokeLinecap="round" />
       <circle cx="117" cy="80" r="11" fill="#fde68a" />
       <path d="M111 73 Q108 65 112 60" stroke="#fde68a" strokeWidth="5" fill="none" strokeLinecap="round" />
       <path d="M117 70 Q115 62 119 57" stroke="#fde68a" strokeWidth="5" fill="none" strokeLinecap="round" />
       <path d="M123 73 Q124 65 128 61" stroke="#fde68a" strokeWidth="5" fill="none" strokeLinecap="round" />
 
-      {/* 6. Neck */}
+      {/* 7. Neck */}
       <rect x="57" y="87" width="16" height="16" rx="6" fill="#fde68a" />
 
-      {/* 7. Head */}
+      {/* 8. Head */}
       <circle cx="65" cy="58" r="38" fill="#fde68a" />
 
-      {/* 8. Face */}
+      {/* 9. Face */}
       <circle cx="52" cy="56" r="9" fill="white" />
       <circle cx="78" cy="56" r="9" fill="white" />
       <circle cx="54" cy="57" r="5.5" fill="#1c1917" />
@@ -363,10 +526,10 @@ export function PankaAvatarDressable({
       <circle cx="88" cy="66" r="9" fill="#fca5a5" opacity="0.4" />
       <path d="M52 70 Q65 80 78 70" stroke="#1c1917" strokeWidth="2.5" fill="none" strokeLinecap="round" />
 
-      {/* 9. Hair front (over face) */}
+      {/* 10. Hair front */}
       {renderHairFront(equipped.hair)}
 
-      {/* 10. Accessory (topmost layer) */}
+      {/* 11. Accessory (topmost) */}
       {renderAccessory(equipped.accessory)}
     </svg>
   )

@@ -17,6 +17,7 @@ const TABS: { id: TabId; label: string; emoji: string }[] = [
   { id: 'outfit',    label: 'Ruha',       emoji: '👗' },
   { id: 'hair',      label: 'Haj',        emoji: '💇' },
   { id: 'accessory', label: 'Kiegészítő', emoji: '✨' },
+  { id: 'footwear',  label: 'Lábbeli',    emoji: '👠' },
 ]
 
 export function Wardrobe({ wardrobeState, onBack, onEquip }: Props): JSX.Element {

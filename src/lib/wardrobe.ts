@@ -4,6 +4,7 @@ export interface EquippedItems {
   outfit: string
   hair: string
   accessory: string
+  footwear: string
 }
 
 export interface WardrobeState {
@@ -17,6 +18,7 @@ export const DEFAULT_EQUIPPED: EquippedItems = {
   outfit: 'outfit-default',
   hair: 'hair-default',
   accessory: 'accessory-none',
+  footwear: 'footwear-sneakers',
 }
 
 const DEFAULT_STATE: WardrobeState = {
@@ -28,7 +30,9 @@ export function loadWardrobeState(): WardrobeState {
   try {
     const stored = localStorage.getItem(STORAGE_KEY)
     if (!stored) return { ...DEFAULT_STATE, unlockedItems: [...DEFAULT_UNLOCKED_IDS] }
-    return JSON.parse(stored) as WardrobeState
+    const parsed = JSON.parse(stored) as WardrobeState
+    // Merge equipped with defaults so new categories get their default value
+    return { ...parsed, equipped: { ...DEFAULT_EQUIPPED, ...parsed.equipped } }
   } catch {
     return { ...DEFAULT_STATE, unlockedItems: [...DEFAULT_UNLOCKED_IDS] }
   }
