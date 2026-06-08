@@ -12,8 +12,10 @@ interface Props {
   mascotId: MascotId
   equippedItems: EquippedItems
   mathFlowers: number
+  readingFlowers: number
   onOpenWardrobe: () => void
   onOpenMath: () => void
+  onOpenReading: () => void
 }
 
 interface ModuleButtonProps {
@@ -86,7 +88,18 @@ const TULIP_SPOTS = [
   { left: '14%', bottom: '40%' },
 ]
 
-export function Garden({ mascotId, equippedItems, mathFlowers, onOpenWardrobe, onOpenMath }: Props) {
+const SUNFLOWER_SPOTS = [
+  { left: '21%', bottom: '31%' },
+  { left: '25%', bottom: '34%' },
+  { left: '22%', bottom: '37%' },
+  { left: '29%', bottom: '32%' },
+  { left: '27%', bottom: '38%' },
+  { left: '33%', bottom: '35%' },
+  { left: '20%', bottom: '40%' },
+  { left: '31%', bottom: '40%' },
+]
+
+export function Garden({ mascotId, equippedItems, mathFlowers, readingFlowers, onOpenWardrobe, onOpenMath, onOpenReading }: Props) {
   const mascot = MASCOTS.find(m => m.id === mascotId) ?? MASCOTS[0]
   const Illustration = mascot.Illustration
 
@@ -198,6 +211,17 @@ export function Garden({ mascotId, equippedItems, mathFlowers, onOpenWardrobe, o
         </span>
       ))}
 
+      {/* ── Reading sunflower bed (center-left grass) ── */}
+      {SUNFLOWER_SPOTS.slice(0, readingFlowers).map((pos, i) => (
+        <span
+          key={i}
+          className="absolute text-2xl leading-none select-none"
+          style={{ left: pos.left, bottom: pos.bottom }}
+        >
+          🌻
+        </span>
+      ))}
+
       {/* ── TOP LEFT: Matek (active) ── */}
       <div className="absolute top-5 left-5">
         <ModuleButton
@@ -232,8 +256,8 @@ export function Garden({ mascotId, equippedItems, mathFlowers, onOpenWardrobe, o
           emoji="📚"
           label="Olvasás"
           bg="bg-amber-500"
-          active={false}
-          onClick={() => handleInactiveModule('Olvasás')}
+          active
+          onClick={() => { unlockAudio(); onOpenReading() }}
         />
       </div>
 

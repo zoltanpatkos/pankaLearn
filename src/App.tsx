@@ -4,6 +4,7 @@ import { MascotConfirm } from './screens/MascotConfirm'
 import { Garden } from './screens/Garden'
 import { Wardrobe } from './screens/Wardrobe'
 import { MathModule } from './screens/MathModule'
+import { ReadingModule } from './screens/ReadingModule'
 import type { MascotId } from './mascots'
 import {
   loadWardrobeState,
@@ -14,7 +15,7 @@ import {
 } from './lib/wardrobe'
 import { WARDROBE_ITEMS, type WardrobeCategory } from './data/wardrobeItems'
 
-type Screen = 'mascot-select' | 'mascot-confirm' | 'garden' | 'wardrobe' | 'math'
+type Screen = 'mascot-select' | 'mascot-confirm' | 'garden' | 'wardrobe' | 'math' | 'reading'
 
 async function enterFullscreen(): Promise<void> {
   if (document.fullscreenElement) return
@@ -36,6 +37,9 @@ export default function App() {
   const [wardrobeState, setWardrobeState] = useState<WardrobeState>(loadWardrobeState)
   const [mathFlowers, setMathFlowers] = useState(
     () => Number(localStorage.getItem('mathFlowers')) || 0
+  )
+  const [readingFlowers, setReadingFlowers] = useState(
+    () => Number(localStorage.getItem('readingFlowers')) || 0
   )
 
   useEffect(() => {
@@ -73,6 +77,17 @@ export default function App() {
     setMathFlowers(next)
   }
 
+  const handleReadingRoundComplete = (unlockedItemId: string | null): void => {
+    if (unlockedItemId) {
+      const next = unlockItem(unlockedItemId, wardrobeState)
+      setWardrobeState(next)
+      saveWardrobeState(next)
+    }
+    const next = Math.min(readingFlowers + 1, 8)
+    localStorage.setItem('readingFlowers', String(next))
+    setReadingFlowers(next)
+  }
+
   const lockedWardrobeItems = WARDROBE_ITEMS
     .filter(item => !wardrobeState.unlockedItems.includes(item.id))
     .map(item => item.id)
@@ -96,8 +111,10 @@ export default function App() {
           mascotId={activeMascot}
           equippedItems={wardrobeState.equipped}
           mathFlowers={mathFlowers}
+          readingFlowers={readingFlowers}
           onOpenWardrobe={() => setScreen('wardrobe')}
           onOpenMath={() => setScreen('math')}
+          onOpenReading={() => setScreen('reading')}
         />
       )}
       {screen === 'wardrobe' && activeMascot && (
@@ -113,6 +130,14 @@ export default function App() {
           lockedWardrobeItems={lockedWardrobeItems}
           onBack={() => setScreen('garden')}
           onRoundComplete={handleRoundComplete}
+        />
+      )}
+      {screen === 'reading' && activeMascot && (
+        <ReadingModule
+          mascotId={activeMascot}
+          lockedWardrobeItems={lockedWardrobeItems}
+          onBack={() => setScreen('garden')}
+          onRoundComplete={handleReadingRoundComplete}
         />
       )}
 
