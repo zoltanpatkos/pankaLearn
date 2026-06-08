@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback } from 'react'
 import type { JSX } from 'react'
 import { MASCOTS, type MascotId } from '../mascots'
-import { speak } from '../lib/tts'
+import { speak, getArticle } from '../lib/tts'
 import { unlockAudio } from '../lib/audio'
 import { RewardOverlay } from '../components/RewardOverlay'
 import { DotPattern } from '../components/DotPattern'
@@ -116,7 +116,7 @@ export function MathModule({ mascotId, lockedWardrobeItems, onBack, onRoundCompl
     if (gt === 'subitizing') {
       setFlashVisible(true)
       setAnswersVisible(false)
-      speak(`Ez a ${idx + 1}. feladat! Hány pötty villan fel?`)
+      speak(`Ez ${getArticle(String(idx + 1))} ${idx + 1}. feladat! Hány pötty villan fel?`)
       setTimeout(() => {
         setFlashVisible(false)
         setAnswersVisible(true)
@@ -124,7 +124,7 @@ export function MathModule({ mascotId, lockedWardrobeItems, onBack, onRoundCompl
     } else {
       setFlashVisible(false)
       setAnswersVisible(true)
-      speak(`Ez a ${idx + 1}. feladat! Hány ${t.emojiSet.plural} van itt?`)
+      speak(`Ez ${getArticle(String(idx + 1))} ${idx + 1}. feladat! Hány ${t.emojiSet.plural} van itt?`)
     }
   }, [])
 

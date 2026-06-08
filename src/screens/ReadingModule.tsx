@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react'
 import type { JSX } from 'react'
 import { MASCOTS, type MascotId } from '../mascots'
-import { speak, speakSyllabified } from '../lib/tts'
+import { speak, speakChained, speakSyllabified } from '../lib/tts'
 import { unlockAudio } from '../lib/audio'
 import { RewardOverlay } from '../components/RewardOverlay'
 import { useRewards } from '../hooks/useRewards'
@@ -67,7 +67,7 @@ export function ReadingModule({ mascotId, lockedWardrobeItems, onBack, onRoundCo
     setTask(t)
     setSelectedCount(null)
     answering.current = false
-    speak(`Ez a ${idx + 1}. feladat! Hány szótagból áll a szó?`)
+    speakChained([`${idx + 1}.`, 'szó! Hány részből áll?'])
     setTimeout(() => speakSyllabified(t.syllables, t.word), 1400)
   }
 
@@ -76,7 +76,7 @@ export function ReadingModule({ mascotId, lockedWardrobeItems, onBack, onRoundCo
     setCards(shuffle(t.syllables.map(s => ({ syllable: s, placed: false }))))
     setAssembled([])
     setAssemblerResult('idle')
-    speak(`Ez a ${idx + 1}. feladat! Rakd össze a szót!`)
+    speakChained([`${idx + 1}.`, 'szó! Rakd össze!'])
     setTimeout(() => speakSyllabified(t.syllables, t.word), 1400)
   }
 
@@ -244,7 +244,7 @@ export function ReadingModule({ mascotId, lockedWardrobeItems, onBack, onRoundCo
             >
               <span className="text-6xl leading-none">👏</span>
               <span className="text-yellow-900 font-bold text-xl text-center">Tapsolj!</span>
-              <span className="text-yellow-800 text-sm text-center px-2">Hány szótagból áll?</span>
+              <span className="text-yellow-800 text-sm text-center px-2">Hány részből áll?</span>
             </button>
             <button
               onClick={() => handleStart('assembler')}
@@ -252,7 +252,7 @@ export function ReadingModule({ mascotId, lockedWardrobeItems, onBack, onRoundCo
             >
               <span className="text-6xl leading-none">🧩</span>
               <span className="text-emerald-900 font-bold text-xl text-center">Rakd össze!</span>
-              <span className="text-emerald-800 text-sm text-center px-2">Illeszd össze a szótagokat!</span>
+              <span className="text-emerald-800 text-sm text-center px-2">Rakd össze!</span>
             </button>
           </div>
         </div>
@@ -320,29 +320,29 @@ export function ReadingModule({ mascotId, lockedWardrobeItems, onBack, onRoundCo
           </div>
         </div>
 
-        <div className="flex-1 flex flex-col items-center justify-between py-4 px-4 min-h-0">
+        <div className="flex-1 flex flex-col items-center justify-between py-2 px-4 min-h-0">
 
           {/* Word display */}
-          <div className="flex flex-col items-center gap-3 flex-shrink-0">
-            <span className="text-8xl leading-none">{task.emoji}</span>
-            <p className="text-white font-black text-4xl text-center tracking-widest drop-shadow-lg mt-1">
+          <div className="flex flex-col items-center gap-2 flex-shrink-0">
+            <span className="text-6xl leading-none">{task.emoji}</span>
+            <p className="text-white font-black text-3xl text-center tracking-widest drop-shadow-lg">
               {task.syllables.join(' · ')}
             </p>
-            <p className="text-white/80 font-bold text-xl text-center drop-shadow">
-              Hány szótagból áll?
+            <p className="text-white/80 font-bold text-lg text-center drop-shadow">
+              Hány részből áll?
             </p>
           </div>
 
           {/* Repeat button */}
           <button
             onClick={handleRepeat}
-            className="bg-white/30 active:bg-white/50 active:scale-95 text-white font-bold text-xl rounded-2xl px-6 py-3 border-2 border-white/40 transition-transform shadow flex-shrink-0"
+            className="bg-white/30 active:bg-white/50 active:scale-95 text-white font-bold text-lg rounded-2xl px-5 py-2 border-2 border-white/40 transition-transform shadow flex-shrink-0"
           >
             🔊 Mondd újra
           </button>
 
           {/* Answer buttons */}
-          <div className="grid grid-cols-2 gap-3 w-full max-w-sm flex-shrink-0">
+          <div className="grid grid-cols-2 gap-2 w-full max-w-sm flex-shrink-0">
             {[1, 2, 3, 4].map(n => {
               const isSelected = selectedCount === n
               const isCorrect  = n === task.syllables.length
@@ -356,13 +356,13 @@ export function ReadingModule({ mascotId, lockedWardrobeItems, onBack, onRoundCo
                   disabled={selectedCount !== null}
                   style={{ animation: isSelected && !isCorrect ? 'shake-no 0.5s ease-out' : 'none' }}
                   className={[
-                    'flex items-center justify-center rounded-3xl py-5 shadow-xl border-4 border-white/60',
+                    'flex items-center justify-center rounded-3xl py-4 shadow-xl border-4 border-white/60',
                     'transition-transform active:scale-90 duration-100',
                     bg,
                     selectedCount !== null && !isSelected ? 'opacity-50' : '',
                   ].join(' ')}
                 >
-                  <span className="text-5xl font-black text-amber-900 leading-none">{n}</span>
+                  <span className="text-4xl font-black text-amber-900 leading-none">{n}</span>
                 </button>
               )
             })}
@@ -392,27 +392,27 @@ export function ReadingModule({ mascotId, lockedWardrobeItems, onBack, onRoundCo
         </div>
       </div>
 
-      <div className="flex-1 flex flex-col items-center justify-between py-6 px-6 min-h-0">
+      <div className="flex-1 flex flex-col items-center justify-between py-3 px-4 min-h-0">
 
         {/* Emoji + repeat */}
-        <div className="flex flex-col items-center gap-3 flex-shrink-0">
-          <span className="text-8xl leading-none">{task.emoji}</span>
+        <div className="flex flex-col items-center gap-2 flex-shrink-0">
+          <span className="text-6xl leading-none">{task.emoji}</span>
           <button
             onClick={handleRepeat}
-            className="bg-white/30 active:bg-white/50 active:scale-95 text-white font-bold text-lg rounded-2xl px-5 py-2.5 border-2 border-white/40 transition-transform shadow"
+            className="bg-white/30 active:bg-white/50 active:scale-95 text-white font-bold text-lg rounded-2xl px-5 py-2 border-2 border-white/40 transition-transform shadow"
           >
             🔊 Mondd újra
           </button>
         </div>
 
         {/* Assembled slots */}
-        <div className="flex gap-3 justify-center flex-shrink-0">
+        <div className="flex gap-2 justify-center flex-shrink-0">
           {task.syllables.map((_, i) => (
             <div
               key={i}
               style={{ animation: assemblerResult === 'wrong' && i < assembled.length ? 'shake-no 0.4s ease-out' : 'none' }}
               className={[
-                'min-w-[72px] h-16 rounded-2xl border-4 flex items-center justify-center transition-all duration-200',
+                'min-w-[64px] h-14 rounded-2xl border-4 flex items-center justify-center transition-all duration-200',
                 i < assembled.length
                   ? assemblerResult === 'correct'
                     ? 'bg-green-400 border-green-300 shadow-lg'
@@ -430,7 +430,7 @@ export function ReadingModule({ mascotId, lockedWardrobeItems, onBack, onRoundCo
         </div>
 
         {/* Syllable cards */}
-        <div className="flex gap-4 flex-wrap justify-center flex-shrink-0">
+        <div className="flex gap-3 flex-wrap justify-center flex-shrink-0">
           {cards.map((card, i) => (
             <button
               key={i}
