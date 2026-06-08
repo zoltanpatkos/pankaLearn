@@ -6,6 +6,7 @@ import { Wardrobe } from './screens/Wardrobe'
 import { MathModule } from './screens/MathModule'
 import { ReadingModule } from './screens/ReadingModule'
 import { EnglishModule } from './screens/EnglishModule'
+import { WritingModule } from './screens/WritingModule'
 import type { MascotId } from './mascots'
 import {
   loadWardrobeState,
@@ -16,7 +17,7 @@ import {
 } from './lib/wardrobe'
 import { WARDROBE_ITEMS, type WardrobeCategory } from './data/wardrobeItems'
 
-type Screen = 'mascot-select' | 'mascot-confirm' | 'garden' | 'wardrobe' | 'math' | 'reading' | 'english'
+type Screen = 'mascot-select' | 'mascot-confirm' | 'garden' | 'wardrobe' | 'math' | 'reading' | 'english' | 'writing'
 
 async function enterFullscreen(): Promise<void> {
   if (document.fullscreenElement) return
@@ -44,6 +45,9 @@ export default function App() {
   )
   const [englishFlowers, setEnglishFlowers] = useState(
     () => Number(localStorage.getItem('englishFlowers')) || 0
+  )
+  const [writingFlowers, setWritingFlowers] = useState(
+    () => Number(localStorage.getItem('writingFlowers')) || 0
   )
 
   useEffect(() => {
@@ -92,6 +96,17 @@ export default function App() {
     setReadingFlowers(next)
   }
 
+  const handleWritingRoundComplete = (unlockedItemId: string | null): void => {
+    if (unlockedItemId) {
+      const next = unlockItem(unlockedItemId, wardrobeState)
+      setWardrobeState(next)
+      saveWardrobeState(next)
+    }
+    const next = Math.min(writingFlowers + 1, 8)
+    localStorage.setItem('writingFlowers', String(next))
+    setWritingFlowers(next)
+  }
+
   const handleEnglishRoundComplete = (unlockedItemId: string | null): void => {
     if (unlockedItemId) {
       const next = unlockItem(unlockedItemId, wardrobeState)
@@ -128,10 +143,12 @@ export default function App() {
           mathFlowers={mathFlowers}
           readingFlowers={readingFlowers}
           englishFlowers={englishFlowers}
+          writingFlowers={writingFlowers}
           onOpenWardrobe={() => setScreen('wardrobe')}
           onOpenMath={() => setScreen('math')}
           onOpenReading={() => setScreen('reading')}
           onOpenEnglish={() => setScreen('english')}
+          onOpenWriting={() => setScreen('writing')}
         />
       )}
       {screen === 'wardrobe' && activeMascot && (
@@ -155,6 +172,14 @@ export default function App() {
           lockedWardrobeItems={lockedWardrobeItems}
           onBack={() => setScreen('garden')}
           onRoundComplete={handleReadingRoundComplete}
+        />
+      )}
+      {screen === 'writing' && activeMascot && (
+        <WritingModule
+          mascotId={activeMascot}
+          lockedWardrobeItems={lockedWardrobeItems}
+          onBack={() => setScreen('garden')}
+          onRoundComplete={handleWritingRoundComplete}
         />
       )}
       {screen === 'english' && activeMascot && (

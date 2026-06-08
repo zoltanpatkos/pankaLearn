@@ -14,10 +14,12 @@ interface Props {
   mathFlowers: number
   readingFlowers: number
   englishFlowers: number
+  writingFlowers: number
   onOpenWardrobe: () => void
   onOpenMath: () => void
   onOpenReading: () => void
   onOpenEnglish: () => void
+  onOpenWriting: () => void
 }
 
 interface ModuleButtonProps {
@@ -112,7 +114,18 @@ const POPPY_SPOTS = [
   { left: '65%', bottom: '40%' },
 ]
 
-export function Garden({ mascotId, equippedItems, mathFlowers, readingFlowers, englishFlowers, onOpenWardrobe, onOpenMath, onOpenReading, onOpenEnglish }: Props) {
+const ROSE_SPOTS = [
+  { left: '42%', bottom: '30%' },
+  { left: '46%', bottom: '33%' },
+  { left: '43%', bottom: '36%' },
+  { left: '48%', bottom: '30%' },
+  { left: '50%', bottom: '34%' },
+  { left: '44%', bottom: '39%' },
+  { left: '49%', bottom: '38%' },
+  { left: '52%', bottom: '37%' },
+]
+
+export function Garden({ mascotId, equippedItems, mathFlowers, readingFlowers, englishFlowers, writingFlowers, onOpenWardrobe, onOpenMath, onOpenReading, onOpenEnglish, onOpenWriting }: Props) {
   const mascot = MASCOTS.find(m => m.id === mascotId) ?? MASCOTS[0]
   const Illustration = mascot.Illustration
 
@@ -246,6 +259,17 @@ export function Garden({ mascotId, equippedItems, mathFlowers, readingFlowers, e
         </span>
       ))}
 
+      {/* ── Writing rose bed (center grass) ── */}
+      {ROSE_SPOTS.slice(0, writingFlowers).map((pos, i) => (
+        <span
+          key={i}
+          className="absolute text-2xl leading-none select-none"
+          style={{ left: pos.left, bottom: pos.bottom }}
+        >
+          🌹
+        </span>
+      ))}
+
       {/* ── TOP LEFT: Matek (active) ── */}
       <div className="absolute top-5 left-5">
         <ModuleButton
@@ -291,8 +315,8 @@ export function Garden({ mascotId, equippedItems, mathFlowers, readingFlowers, e
           emoji="✏️"
           label="Írás"
           bg="bg-rose-500"
-          active={false}
-          onClick={() => handleInactiveModule('Írás')}
+          active
+          onClick={() => { unlockAudio(); onOpenWriting() }}
         />
         <div className="w-14 h-14 rounded-2xl overflow-hidden shadow-lg border-2 border-white/60 bg-white/20">
           <Illustration />
