@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useCallback } from 'react'
 import { MASCOTS, type MascotId } from '../mascots'
 import { speak, isMuted, setMuted } from '../lib/tts'
 import { unlockAudio } from '../lib/audio'
@@ -20,6 +20,8 @@ interface Props {
   onOpenReading: () => void
   onOpenEnglish: () => void
   onOpenWriting: () => void
+  onOpenParentLock: () => void
+  onMascotReset: () => void
 }
 
 interface ModuleButtonProps {
@@ -128,16 +130,33 @@ const ROSE_SPOTS = [
   { left: '52%', bottom: '37%' },
 ]
 
-export function Garden({ mascotId, equippedItems, mathFlowers, readingFlowers, englishFlowers, writingFlowers, onOpenWardrobe, onOpenMath, onOpenReading, onOpenEnglish, onOpenWriting }: Props) {
+export function Garden({ mascotId, equippedItems, mathFlowers, readingFlowers, englishFlowers, writingFlowers, onOpenWardrobe, onOpenMath, onOpenReading, onOpenEnglish, onOpenWriting, onOpenParentLock, onMascotReset }: Props) {
   const mascot = MASCOTS.find(m => m.id === mascotId) ?? MASCOTS[0]
   const Illustration = mascot.Illustration
 
   const [muted, setMutedState] = useState(isMuted())
+  const [showMascotBubble, setShowMascotBubble] = useState(false)
+  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const handleMascotPointerDown = useCallback(() => {
+    longPressTimer.current = setTimeout(() => setShowMascotBubble(true), 1500)
+  }, [])
+
+  const handleMascotPointerCancel = useCallback(() => {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current)
+      longPressTimer.current = null
+    }
+  }, [])
+
+  const handleMascotSwap = useCallback(() => {
+    setShowMascotBubble(false)
+    speak('Új barátot választasz?')
+    onMascotReset()
+  }, [onMascotReset])
   const [treeLevel, setTreeLevel] = useState<TreeLevel>(
     clampTreeLevel(Number(localStorage.getItem('treeLevel')) || 0)
   )
-  const demoRunning = useRef(false)
-
   const handleTreeLevelUp = (): void => {
     setTreeLevel(prev => {
       const next = clampTreeLevel(prev + 1)
@@ -146,7 +165,7 @@ export function Garden({ mascotId, equippedItems, mathFlowers, readingFlowers, e
     })
   }
 
-  const { activeReward, rewardKey, triggerMicro, triggerMedium, triggerBig } = useRewards({
+  const { activeReward, rewardKey, triggerMicro, triggerMedium } = useRewards({
     onTreeLevelUp: handleTreeLevelUp,
   })
 
@@ -165,16 +184,6 @@ export function Garden({ mascotId, equippedItems, mathFlowers, readingFlowers, e
   const handleInactiveModule = (name: string): void => {
     unlockAudio()
     speak(`${name} hamarosan jön!`)
-  }
-
-  const handleDemo = (): void => {
-    if (demoRunning.current) return
-    demoRunning.current = true
-    unlockAudio()
-    triggerMicro()
-    setTimeout(() => triggerMedium(), 2000)
-    setTimeout(() => triggerBig(), 4000)
-    setTimeout(() => { demoRunning.current = false }, 5600)
   }
 
   return (
@@ -286,16 +295,6 @@ export function Garden({ mascotId, equippedItems, mathFlowers, readingFlowers, e
         />
       </div>
 
-      {/* ── BOTTOM CENTER: Demo button (temporary) ── */}
-      <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-50">
-        <button
-          onClick={handleDemo}
-          className="bg-yellow-400 active:bg-yellow-300 active:scale-95 text-yellow-900 font-bold text-xl rounded-3xl px-8 py-4 shadow-2xl border-4 border-yellow-500 transition-transform whitespace-nowrap"
-        >
-          🎉 Jutalom teszt
-        </button>
-      </div>
-
       {/* ── TOP RIGHT: Volume + Olvasás stacked ── */}
       <div className="absolute top-5 right-5 flex flex-col items-end gap-2">
         <button
@@ -315,7 +314,7 @@ export function Garden({ mascotId, equippedItems, mathFlowers, readingFlowers, e
       </div>
 
       {/* ── BOTTOM LEFT: Írás + Mascot mini stacked ── */}
-      <div className="absolute bottom-5 left-5 flex flex-col items-center gap-2">
+      <div className="absolute bottom-5 left-5 flex flex-col items-center gap-2 z-30">
         <ModuleButton
           emoji="✏️"
           label="Írás"
@@ -323,8 +322,24 @@ export function Garden({ mascotId, equippedItems, mathFlowers, readingFlowers, e
           active
           onClick={() => { unlockAudio(); onOpenWriting() }}
         />
-        <div className="w-14 h-14 rounded-2xl overflow-hidden shadow-lg border-2 border-white/60 bg-white/20">
-          <Illustration />
+        <div className="relative">
+          <div
+            className="w-14 h-14 rounded-2xl overflow-hidden shadow-lg border-2 border-white/60 bg-white/20"
+            onPointerDown={handleMascotPointerDown}
+            onPointerUp={handleMascotPointerCancel}
+            onPointerLeave={handleMascotPointerCancel}
+            onContextMenu={e => e.preventDefault()}
+          >
+            <Illustration />
+          </div>
+          {showMascotBubble && (
+            <button
+              onClick={handleMascotSwap}
+              className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-white text-gray-800 font-bold text-sm rounded-2xl px-3 py-2 shadow-xl border-2 border-purple-200 whitespace-nowrap z-30"
+            >
+              🔄 Kabalát cserélek
+            </button>
+          )}
         </div>
       </div>
 
@@ -338,6 +353,23 @@ export function Garden({ mascotId, equippedItems, mathFlowers, readingFlowers, e
           onClick={() => { unlockAudio(); onOpenEnglish() }}
         />
       </div>
+
+      {/* ── Parent lock (subtle, bottom center) ── */}
+      <button
+        onClick={onOpenParentLock}
+        className="absolute bottom-3 left-1/2 -translate-x-1/2 z-10 opacity-30 active:opacity-70 w-10 h-10 flex items-center justify-center text-xl"
+        aria-label="Szülői beállítások"
+      >
+        ⚙️
+      </button>
+
+      {/* ── Mascot-swap bubble backdrop ── */}
+      {showMascotBubble && (
+        <div
+          className="absolute inset-0 z-20"
+          onClick={() => setShowMascotBubble(false)}
+        />
+      )}
 
       {/* ── Reward overlay ── */}
       <RewardOverlay type={activeReward} rewardKey={rewardKey} mascotId={mascotId} />

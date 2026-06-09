@@ -28,7 +28,7 @@ export const READING_WORDS: WordEntry[] = [
   { syllables: ['SZE', 'KÉR'], word: 'szekér', emoji: '🛒', level: 2 },
 
   // Level 3 — 3 szótagos
-  { syllables: ['MA', 'CSI', 'KA'],  word: 'macska',   emoji: '🐱', level: 3 },
+  { syllables: ['MACS', 'KA'],       word: 'macska',   emoji: '🐱', level: 2 },
   { syllables: ['PI', 'ROS', 'KA'],  word: 'Piroska',  emoji: '🧺', level: 3 },
   { syllables: ['CU', 'KOR', 'KA'],  word: 'cukorka',  emoji: '🍬', level: 3 },
   { syllables: ['NYU', 'SZI', 'KA'], word: 'nyuszika', emoji: '🐰', level: 3 },

@@ -7,6 +7,7 @@ import { MathModule } from './screens/MathModule'
 import { ReadingModule } from './screens/ReadingModule'
 import { EnglishModule } from './screens/EnglishModule'
 import { WritingModule } from './screens/WritingModule'
+import { ParentLock } from './screens/ParentLock'
 import type { MascotId } from './mascots'
 import {
   loadWardrobeState,
@@ -17,7 +18,7 @@ import {
 } from './lib/wardrobe'
 import { WARDROBE_ITEMS, type WardrobeCategory } from './data/wardrobeItems'
 
-type Screen = 'mascot-select' | 'mascot-confirm' | 'garden' | 'wardrobe' | 'math' | 'reading' | 'english' | 'writing'
+type Screen = 'mascot-select' | 'mascot-confirm' | 'garden' | 'wardrobe' | 'math' | 'reading' | 'english' | 'writing' | 'parent-lock'
 
 async function enterFullscreen(): Promise<void> {
   if (document.fullscreenElement) return
@@ -149,6 +150,13 @@ export default function App() {
           onOpenReading={() => setScreen('reading')}
           onOpenEnglish={() => setScreen('english')}
           onOpenWriting={() => setScreen('writing')}
+          onOpenParentLock={() => setScreen('parent-lock')}
+          onMascotReset={() => {
+            localStorage.removeItem('mascot')
+            setCurrentMascot(null)
+            setPendingMascot(null)
+            setScreen('mascot-select')
+          }}
         />
       )}
       {screen === 'wardrobe' && activeMascot && (
@@ -180,6 +188,16 @@ export default function App() {
           lockedWardrobeItems={lockedWardrobeItems}
           onBack={() => setScreen('garden')}
           onRoundComplete={handleWritingRoundComplete}
+        />
+      )}
+      {screen === 'parent-lock' && (
+        <ParentLock
+          onBack={() => setScreen('garden')}
+          onMascotReset={() => {
+            setCurrentMascot(null)
+            setPendingMascot(null)
+            setScreen('mascot-select')
+          }}
         />
       )}
       {screen === 'english' && activeMascot && (
