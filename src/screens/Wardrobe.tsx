@@ -78,13 +78,13 @@ export function Wardrobe({ wardrobeState, onBack, onEquip }: Props): JSX.Element
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
                 className={[
-                  'flex-1 flex items-center justify-center gap-1.5 rounded-2xl py-2.5 font-bold text-sm transition-transform active:scale-95 shadow border-2',
+                  'flex-1 flex items-center justify-center gap-1.5 rounded-2xl py-3.5 font-bold text-base transition-transform active:scale-95 shadow-lg border-2',
                   activeTab === tab.id
                     ? 'bg-purple-500 text-white border-purple-400 shadow-purple-200'
-                    : 'bg-white/70 text-purple-800 border-white/60',
+                    : 'bg-white/80 text-purple-800 border-purple-100',
                 ].join(' ')}
               >
-                <span className="text-lg">{tab.emoji}</span>
+                <span className="text-2xl leading-none">{tab.emoji}</span>
                 <span>{tab.label}</span>
               </button>
             ))}
@@ -101,26 +101,28 @@ export function Wardrobe({ wardrobeState, onBack, onEquip }: Props): JSX.Element
                     key={item.id}
                     onClick={() => handleEquip(item.id, item.category, isLocked)}
                     className={[
-                      'relative flex flex-col items-center justify-center gap-1.5 rounded-3xl py-3 px-2',
+                      'relative flex flex-col items-center justify-center gap-2 rounded-3xl py-4 px-3',
                       'border-4 shadow-lg transition-transform active:scale-95',
                       isEquipped
-                        ? 'bg-purple-400 border-purple-300 shadow-purple-300'
-                        : 'bg-white/80 border-white/60',
+                        ? 'bg-purple-500 border-purple-400 shadow-purple-300'
+                        : 'bg-white/90 border-purple-100',
                       isLocked ? 'opacity-50' : '',
                     ].join(' ')}
                   >
-                    <span className="text-4xl leading-none">{item.emoji}</span>
+                    <span className="text-5xl leading-none">{item.emoji}</span>
                     <span className={[
-                      'text-xs font-semibold leading-tight text-center',
+                      'text-sm font-bold leading-tight text-center',
                       isEquipped ? 'text-white' : 'text-purple-900',
                     ].join(' ')}>
                       {item.name}
                     </span>
                     {isLocked && (
-                      <span className="absolute top-1.5 right-2 text-base">🔒</span>
+                      <div className="absolute inset-0 rounded-[1.4rem] flex items-center justify-center">
+                        <span className="text-3xl drop-shadow">🔒</span>
+                      </div>
                     )}
                     {isEquipped && (
-                      <span className="absolute top-1.5 left-2 text-sm">✓</span>
+                      <span className="absolute top-2 left-2.5 text-xl font-black text-white drop-shadow">✓</span>
                     )}
                   </button>
                 )

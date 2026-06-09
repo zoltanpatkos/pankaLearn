@@ -18,12 +18,15 @@ export function RewardOverlay({ type, rewardKey, mascotId }: Props): JSX.Element
     <div className="fixed inset-0 flex items-center justify-center pointer-events-none z-40">
 
       {type === 'small' && (
-        <div key={rewardKey} className="flex gap-3 items-center">
+        <div key={rewardKey} className="flex gap-4 items-center">
           {[0, 0.18, 0.36].map((delay, i) => (
             <span
               key={i}
-              className="text-[5rem] leading-none select-none"
-              style={{ animation: `star-pop 1s ease-out ${delay}s both` }}
+              className="text-[6.5rem] leading-none select-none"
+              style={{
+                animation: `star-pop 1s ease-out ${delay}s both`,
+                filter: 'drop-shadow(0 0 16px #fbbf24)',
+              }}
             >
               ⭐
             </span>
@@ -34,8 +37,11 @@ export function RewardOverlay({ type, rewardKey, mascotId }: Props): JSX.Element
       {type === 'micro' && (
         <span
           key={rewardKey}
-          className="text-[7rem] leading-none select-none"
-          style={{ animation: 'star-pop 0.9s ease-out forwards' }}
+          className="text-[10rem] leading-none select-none"
+          style={{
+            animation: 'star-pop 0.9s ease-out forwards',
+            filter: 'drop-shadow(0 0 28px #fbbf24)',
+          }}
         >
           ⭐
         </span>

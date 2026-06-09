@@ -8,6 +8,7 @@ export type RewardType = 'micro' | 'small' | 'medium' | 'big' | 'error' | null
 
 interface UseRewardsOptions {
   onTreeLevelUp: () => void
+  confettiColors?: string[]
 }
 
 export interface UseRewardsReturn {
@@ -20,16 +21,18 @@ export interface UseRewardsReturn {
   triggerError: () => void
 }
 
-function fireMediumConfetti(): void {
+const DEFAULT_CONFETTI = ['#f472b6', '#34d399', '#fbbf24', '#60a5fa', '#a78bfa']
+
+function fireMediumConfetti(colors: string[]): void {
   void confetti({
     particleCount: 120,
     spread: 80,
     origin: { x: 0.5, y: 0.45 },
-    colors: ['#f472b6', '#34d399', '#fbbf24', '#60a5fa', '#a78bfa'],
+    colors,
   })
 }
 
-function fireBigConfetti(): void {
+function fireBigConfetti(colors: string[]): void {
   const fire = (x: number, y: number, count: number, delay: number): void => {
     setTimeout(() => {
       void confetti({
@@ -37,7 +40,7 @@ function fireBigConfetti(): void {
         spread: 110,
         startVelocity: 48,
         origin: { x, y },
-        colors: ['#f472b6', '#34d399', '#fbbf24', '#60a5fa', '#a78bfa', '#fb7185'],
+        colors,
       })
     }, delay)
   }
@@ -47,15 +50,20 @@ function fireBigConfetti(): void {
   fire(0.5, 0.2,   80, 1100)
 }
 
-export function useRewards({ onTreeLevelUp }: UseRewardsOptions): UseRewardsReturn {
+export function useRewards({ onTreeLevelUp, confettiColors }: UseRewardsOptions): UseRewardsReturn {
   const [activeReward, setActiveReward] = useState<RewardType>(null)
   const [rewardKey, setRewardKey] = useState(0)
   const onTreeLevelUpRef = useRef(onTreeLevelUp)
+  const colorsRef = useRef(confettiColors ?? DEFAULT_CONFETTI)
   const clearTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
     onTreeLevelUpRef.current = onTreeLevelUp
   }, [onTreeLevelUp])
+
+  useEffect(() => {
+    colorsRef.current = confettiColors ?? DEFAULT_CONFETTI
+  }, [confettiColors])
 
   const activate = useCallback((type: RewardType, duration: number): void => {
     if (clearTimer.current) clearTimeout(clearTimer.current)
@@ -76,13 +84,13 @@ export function useRewards({ onTreeLevelUp }: UseRewardsOptions): UseRewardsRetu
 
   const triggerMedium = useCallback((): void => {
     activate('medium', 3200)
-    fireMediumConfetti()
+    fireMediumConfetti(colorsRef.current)
     speak(getRandomPraise('medium'))
   }, [activate])
 
   const triggerBig = useCallback((): void => {
     activate('big', 5500)
-    fireBigConfetti()
+    fireBigConfetti(colorsRef.current)
     playBigMelody()
     onTreeLevelUpRef.current()
     setTimeout(() => speak(getRandomPraise('big')), 700)

@@ -144,7 +144,7 @@ export const MASCOTS: Mascot[] = [
     intro: 'Szia, én Kifli vagyok! Nyau, együtt menni fog, meglátod!',
     confirmSpeech: 'Biztos ezt választod? Kifli lesz a barátod!',
     gardenSpeech: 'Szia Panka! Kifli vagyok, és itt vagyok veled! Nyau!',
-    cardBg: 'from-purple-400 to-pink-300',
+    cardBg: 'from-pink-500 to-rose-300',
     Illustration: CatIllustration,
   },
   {

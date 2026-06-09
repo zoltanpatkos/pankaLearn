@@ -59,6 +59,7 @@ export function ReadingModule({ mascotId, lockedWardrobeItems, onBack, onRoundCo
 
   const { activeReward, rewardKey, triggerMicro, triggerSmall, triggerMedium, triggerError } = useRewards({
     onTreeLevelUp: () => {},
+    confettiColors: ['#3b82f6', '#60a5fa', '#93c5fd', '#1d4ed8', '#dbeafe'],
   })
 
   // ── Task starters ─────────────────────────────────────────────────────────
@@ -204,9 +205,9 @@ export function ReadingModule({ mascotId, lockedWardrobeItems, onBack, onRoundCo
         <div
           key={i}
           className={[
-            'w-5 h-5 rounded-full border-2 border-white/60 transition-all duration-300',
-            i < taskIndex  ? 'bg-yellow-400 border-yellow-300 scale-110' :
-            i === taskIndex ? 'bg-white scale-110' : 'bg-white/30',
+            'w-7 h-7 rounded-full border-2 transition-all duration-300',
+            i < taskIndex  ? 'bg-blue-400 border-blue-300 scale-110' :
+            i === taskIndex ? 'bg-blue-500 border-blue-400 scale-110' : 'bg-gray-200 border-gray-300',
           ].join(' ')}
         />
       ))}
@@ -217,15 +218,15 @@ export function ReadingModule({ mascotId, lockedWardrobeItems, onBack, onRoundCo
 
   if (phase === 'select') {
     return (
-      <div className="relative w-screen h-screen overflow-hidden select-none bg-gradient-to-b from-amber-500 via-amber-400 to-orange-300 flex flex-col">
-        <div className="flex items-center px-4 pt-4 gap-3">
+      <div className="relative w-screen h-screen overflow-hidden select-none bg-gradient-to-b from-blue-500 via-blue-400 to-sky-300 flex flex-col">
+        <div className="mx-3 mt-3 bg-white/90 rounded-2xl shadow-lg flex items-center px-3 py-2.5 gap-3">
           <button
             onClick={handleBack}
-            className="bg-white/80 active:bg-white rounded-2xl px-4 py-2.5 text-amber-900 font-bold text-lg shadow border-2 border-white/60 active:scale-95 transition-transform"
+            className="bg-blue-100 active:bg-blue-200 rounded-xl px-3 py-2 text-blue-900 font-bold text-base border border-blue-300 active:scale-95 transition-transform"
           >
             ← Kert
           </button>
-          <h1 className="text-3xl font-bold text-white drop-shadow flex-1 text-center pr-16">
+          <h1 className="text-2xl font-black text-blue-800 drop-shadow-sm flex-1 text-center">
             📚 Olvasás
           </h1>
         </div>
@@ -251,7 +252,7 @@ export function ReadingModule({ mascotId, lockedWardrobeItems, onBack, onRoundCo
               className="flex-1 flex flex-col items-center gap-3 bg-emerald-400 active:bg-emerald-300 rounded-3xl py-6 shadow-2xl border-4 border-emerald-300 active:scale-95 transition-transform"
             >
               <span className="text-6xl leading-none">🧩</span>
-              <span className="text-emerald-900 font-bold text-xl text-center">Rakd össze!</span>
+              <span className="text-blue-900 font-bold text-xl text-center">Rakd össze!</span>
               <span className="text-emerald-800 text-sm text-center px-2">Rakd össze!</span>
             </button>
           </div>
@@ -264,12 +265,13 @@ export function ReadingModule({ mascotId, lockedWardrobeItems, onBack, onRoundCo
 
   if (phase === 'round-end') {
     return (
-      <div className="relative w-screen h-screen overflow-hidden select-none bg-gradient-to-b from-amber-500 to-orange-500 flex flex-col items-center justify-center gap-8 px-8">
-        <div
-          className="text-[10rem] leading-none"
-          style={{ animation: 'star-pop 1s ease-out forwards' }}
-        >
-          🌻
+      <div className="relative w-screen h-screen overflow-hidden select-none bg-gradient-to-b from-blue-600 to-sky-500 flex flex-col items-center justify-center gap-8 px-8">
+        <div className="relative flex items-center justify-center w-72 h-52">
+          <span className="absolute top-1 left-6 text-5xl select-none" style={{ animation: 'star-pop 0.7s ease-out 0.3s both' }}>⭐</span>
+          <span className="absolute top-2 right-6 text-4xl select-none" style={{ animation: 'star-pop 0.7s ease-out 0.5s both' }}>✨</span>
+          <span className="absolute bottom-1 left-10 text-4xl select-none" style={{ animation: 'star-pop 0.7s ease-out 0.6s both' }}>⭐</span>
+          <span className="absolute bottom-0 right-10 text-5xl select-none" style={{ animation: 'star-pop 0.7s ease-out 0.45s both' }}>✨</span>
+          <div className="text-[11rem] leading-none select-none" style={{ animation: 'star-pop 1s ease-out forwards', filter: 'drop-shadow(0 0 30px #60a5fa)' }}>🌻</div>
         </div>
         <p className="text-white font-bold text-3xl text-center drop-shadow-lg">
           {mascot.name} szerint<br />fantasztikus voltál!
@@ -299,23 +301,23 @@ export function ReadingModule({ mascotId, lockedWardrobeItems, onBack, onRoundCo
     )
   }
 
-  if (!task) return <div className="w-screen h-screen bg-amber-500" />
+  if (!task) return <div className="w-screen h-screen bg-blue-500" />
 
   // ── CLAPPER ───────────────────────────────────────────────────────────────
 
   if (gameType === 'clapper') {
     return (
-      <div className="relative w-screen h-screen overflow-hidden select-none bg-gradient-to-b from-amber-500 via-amber-400 to-orange-300 flex flex-col">
+      <div className="relative w-screen h-screen overflow-hidden select-none bg-gradient-to-b from-blue-500 via-blue-400 to-sky-300 flex flex-col">
 
-        <div className="flex items-center px-4 pt-4 gap-3 flex-shrink-0">
+        <div className="mx-3 mt-3 bg-white/90 rounded-2xl shadow-lg flex items-center px-3 py-2.5 gap-3 flex-shrink-0">
           <button
             onClick={handleBack}
-            className="bg-white/80 active:bg-white rounded-2xl px-4 py-2.5 text-amber-900 font-bold text-lg shadow border-2 border-white/60 active:scale-95 transition-transform"
+            className="bg-blue-100 active:bg-blue-200 rounded-xl px-3 py-2 text-blue-900 font-bold text-base border border-blue-300 active:scale-95 transition-transform"
           >
             ← Kert
           </button>
           <ProgressDots />
-          <div className="w-12 h-12 rounded-2xl overflow-hidden border-2 border-white/50 shadow flex-shrink-0">
+          <div className="w-11 h-11 rounded-xl overflow-hidden border-2 border-blue-100 shadow flex-shrink-0">
             <Illustration />
           </div>
         </div>
@@ -346,23 +348,25 @@ export function ReadingModule({ mascotId, lockedWardrobeItems, onBack, onRoundCo
             {[1, 2, 3, 4].map(n => {
               const isSelected = selectedCount === n
               const isCorrect  = n === task.syllables.length
-              let bg = 'bg-white active:bg-gray-100'
-              if (isSelected && isCorrect)  bg = 'bg-green-400 border-green-300'
-              if (isSelected && !isCorrect) bg = 'bg-red-400 border-red-300'
+              let bg = 'bg-blue-500 active:bg-blue-600 border-blue-400'
+              if (isSelected && isCorrect)  bg = 'bg-green-500 border-green-400'
+              if (isSelected && !isCorrect) bg = 'bg-red-500 border-red-400'
+              const anim = isSelected && isCorrect  ? 'correct-answer 0.4s ease-out'
+                : isSelected && !isCorrect ? 'shake-no 0.5s ease-out' : 'none'
               return (
                 <button
                   key={n}
                   onClick={() => handleClapperAnswer(n)}
                   disabled={selectedCount !== null}
-                  style={{ animation: isSelected && !isCorrect ? 'shake-no 0.5s ease-out' : 'none' }}
+                  style={{ animation: anim }}
                   className={[
-                    'flex items-center justify-center rounded-3xl py-4 shadow-xl border-4 border-white/60',
+                    'flex items-center justify-center rounded-3xl min-h-[80px] shadow-xl border-4',
                     'transition-transform active:scale-90 duration-100',
                     bg,
                     selectedCount !== null && !isSelected ? 'opacity-50' : '',
                   ].join(' ')}
                 >
-                  <span className="text-4xl font-black text-amber-900 leading-none">{n}</span>
+                  <span className="text-4xl font-black text-white leading-none">{n}</span>
                 </button>
               )
             })}
@@ -377,12 +381,12 @@ export function ReadingModule({ mascotId, lockedWardrobeItems, onBack, onRoundCo
   // ── ASSEMBLER ─────────────────────────────────────────────────────────────
 
   return (
-    <div className="relative w-screen h-screen overflow-hidden select-none bg-gradient-to-b from-emerald-500 via-emerald-400 to-teal-300 flex flex-col">
+    <div className="relative w-screen h-screen overflow-hidden select-none bg-gradient-to-b from-blue-500 via-sky-400 to-blue-300 flex flex-col">
 
       <div className="flex items-center px-4 pt-4 gap-3 flex-shrink-0">
         <button
           onClick={handleBack}
-          className="bg-white/80 active:bg-white rounded-2xl px-4 py-2.5 text-emerald-900 font-bold text-lg shadow border-2 border-white/60 active:scale-95 transition-transform"
+          className="bg-white/80 active:bg-white rounded-2xl px-4 py-2.5 text-blue-900 font-bold text-lg shadow border-2 border-white/60 active:scale-95 transition-transform"
         >
           ← Kert
         </button>
@@ -423,7 +427,7 @@ export function ReadingModule({ mascotId, lockedWardrobeItems, onBack, onRoundCo
               ].join(' ')}
             >
               {i < assembled.length && (
-                <span className="text-2xl font-black text-emerald-900">{assembled[i]}</span>
+                <span className="text-2xl font-black text-blue-900">{assembled[i]}</span>
               )}
             </div>
           ))}
@@ -445,7 +449,7 @@ export function ReadingModule({ mascotId, lockedWardrobeItems, onBack, onRoundCo
               ].join(' ')}
             >
               {!card.placed && (
-                <span className="text-2xl font-black text-emerald-900">{card.syllable}</span>
+                <span className="text-2xl font-black text-blue-900">{card.syllable}</span>
               )}
             </button>
           ))}

@@ -106,6 +106,7 @@ export function MathModule({ mascotId, lockedWardrobeItems, onBack, onRoundCompl
 
   const { activeReward, rewardKey, triggerMicro, triggerSmall, triggerMedium, triggerError } = useRewards({
     onTreeLevelUp: () => {},
+    confettiColors: ['#fbbf24', '#f59e0b', '#fde68a', '#d97706', '#fffbeb'],
   })
 
   const startTask = useCallback((t: TaskState, idx: number, gt: GameType): void => {
@@ -207,15 +208,15 @@ export function MathModule({ mascotId, lockedWardrobeItems, onBack, onRoundCompl
   // ── SELECT phase ──────────────────────────────────────────────────────────
   if (phase === 'select') {
     return (
-      <div className="relative w-screen h-screen overflow-hidden select-none bg-gradient-to-b from-indigo-500 via-indigo-400 to-purple-400 flex flex-col">
-        <div className="flex items-center px-4 pt-4 gap-3">
+      <div className="relative w-screen h-screen overflow-hidden select-none bg-gradient-to-b from-yellow-500 via-yellow-400 to-amber-300 flex flex-col">
+        <div className="mx-3 mt-3 bg-white/90 rounded-2xl shadow-lg flex items-center px-3 py-2.5 gap-3">
           <button
             onClick={handleBack}
-            className="bg-white/80 active:bg-white rounded-2xl px-4 py-2.5 text-indigo-900 font-bold text-lg shadow border-2 border-white/60 active:scale-95 transition-transform"
+            className="bg-yellow-100 active:bg-yellow-200 rounded-xl px-3 py-2 text-yellow-900 font-bold text-base border border-yellow-300 active:scale-95 transition-transform"
           >
             ← Kert
           </button>
-          <h1 className="text-3xl font-bold text-white drop-shadow flex-1 text-center pr-16">
+          <h1 className="text-2xl font-black text-yellow-800 drop-shadow-sm flex-1 text-center">
             🔢 Matek
           </h1>
         </div>
@@ -255,12 +256,13 @@ export function MathModule({ mascotId, lockedWardrobeItems, onBack, onRoundCompl
   // ── ROUND-END phase ───────────────────────────────────────────────────────
   if (phase === 'round-end') {
     return (
-      <div className="relative w-screen h-screen overflow-hidden select-none bg-gradient-to-b from-violet-500 to-fuchsia-500 flex flex-col items-center justify-center gap-8 px-8">
-        <div
-          className="text-[10rem] leading-none"
-          style={{ animation: 'star-pop 1s ease-out forwards' }}
-        >
-          ⭐
+      <div className="relative w-screen h-screen overflow-hidden select-none bg-gradient-to-b from-yellow-600 to-amber-500 flex flex-col items-center justify-center gap-8 px-8">
+        <div className="relative flex items-center justify-center w-72 h-52">
+          <span className="absolute top-1 left-6 text-5xl select-none" style={{ animation: 'star-pop 0.7s ease-out 0.3s both' }}>⭐</span>
+          <span className="absolute top-2 right-6 text-4xl select-none" style={{ animation: 'star-pop 0.7s ease-out 0.5s both' }}>✨</span>
+          <span className="absolute bottom-1 left-10 text-4xl select-none" style={{ animation: 'star-pop 0.7s ease-out 0.6s both' }}>⭐</span>
+          <span className="absolute bottom-0 right-10 text-5xl select-none" style={{ animation: 'star-pop 0.7s ease-out 0.45s both' }}>✨</span>
+          <div className="text-[11rem] leading-none select-none" style={{ animation: 'star-pop 1s ease-out forwards', filter: 'drop-shadow(0 0 30px #fbbf24)' }}>⭐</div>
         </div>
         <p className="text-white font-bold text-3xl text-center drop-shadow-lg">
           {mascot.name} szerint<br />fantasztikus voltál!
@@ -291,16 +293,16 @@ export function MathModule({ mascotId, lockedWardrobeItems, onBack, onRoundCompl
   }
 
   // ── GAME phase ────────────────────────────────────────────────────────────
-  if (!task) return <div className="w-screen h-screen bg-indigo-500" />
+  if (!task) return <div className="w-screen h-screen bg-yellow-500" />
 
   return (
-    <div className="relative w-screen h-screen overflow-hidden select-none bg-gradient-to-b from-indigo-500 via-indigo-400 to-purple-400 flex flex-col">
+    <div className="relative w-screen h-screen overflow-hidden select-none bg-gradient-to-b from-yellow-500 via-yellow-400 to-amber-300 flex flex-col">
 
       {/* Header */}
-      <div className="flex items-center px-4 pt-4 gap-3 flex-shrink-0">
+      <div className="mx-3 mt-3 bg-white/90 rounded-2xl shadow-lg flex items-center px-3 py-2.5 gap-3 flex-shrink-0">
         <button
           onClick={handleBack}
-          className="bg-white/80 active:bg-white rounded-2xl px-4 py-2.5 text-indigo-900 font-bold text-lg shadow border-2 border-white/60 active:scale-95 transition-transform"
+          className="bg-yellow-100 active:bg-yellow-200 rounded-xl px-3 py-2 text-yellow-900 font-bold text-base border border-yellow-300 active:scale-95 transition-transform"
         >
           ← Kert
         </button>
@@ -311,16 +313,16 @@ export function MathModule({ mascotId, lockedWardrobeItems, onBack, onRoundCompl
             <div
               key={i}
               className={[
-                'w-5 h-5 rounded-full border-2 border-white/60 transition-all duration-300',
+                'w-7 h-7 rounded-full border-2 transition-all duration-300',
                 i < taskIndex ? 'bg-yellow-400 border-yellow-300 scale-110' :
-                i === taskIndex ? 'bg-white scale-110' : 'bg-white/30',
+                i === taskIndex ? 'bg-yellow-500 border-yellow-400 scale-110' : 'bg-gray-200 border-gray-300',
               ].join(' ')}
             />
           ))}
         </div>
 
         {/* Mascot mini */}
-        <div className="w-12 h-12 rounded-2xl overflow-hidden border-2 border-white/50 shadow flex-shrink-0">
+        <div className="w-11 h-11 rounded-xl overflow-hidden border-2 border-yellow-100 shadow flex-shrink-0">
           <Illustration />
         </div>
       </div>
@@ -374,10 +376,11 @@ export function MathModule({ mascotId, lockedWardrobeItems, onBack, onRoundCompl
           {task.answers.map(n => {
             const isSelected = selected === n
             const isCorrect  = n === task.correct
-            let bg = 'bg-white active:bg-gray-100'
-            if (isSelected && isCorrect)  bg = 'bg-green-400 border-green-300'
-            if (isSelected && !isCorrect) bg = 'bg-red-400 border-red-300'
-            const anim = isSelected && !isCorrect ? 'shake-no 0.5s ease-out' : 'none'
+            let bg = 'bg-yellow-500 active:bg-yellow-600 border-yellow-400'
+            if (isSelected && isCorrect)  bg = 'bg-green-500 border-green-400'
+            if (isSelected && !isCorrect) bg = 'bg-red-500 border-red-400'
+            const anim = isSelected && isCorrect  ? 'correct-answer 0.4s ease-out'
+              : isSelected && !isCorrect ? 'shake-no 0.5s ease-out' : 'none'
 
             return (
               <button
@@ -387,14 +390,14 @@ export function MathModule({ mascotId, lockedWardrobeItems, onBack, onRoundCompl
                 style={{ animation: anim }}
                 className={[
                   'flex flex-col items-center justify-center gap-1',
-                  'rounded-3xl py-4 shadow-xl border-4 border-white/60',
+                  'rounded-3xl min-h-[80px] shadow-xl border-4',
                   'transition-transform active:scale-90 duration-100',
                   bg,
                   selected !== null && !isSelected ? 'opacity-50' : '',
                 ].join(' ')}
               >
-                <span className="text-4xl font-black text-indigo-900 leading-none">{n}</span>
-                <span className="text-base font-bold text-indigo-700">{HU_NUMS[n]}</span>
+                <span className="text-4xl font-black text-white leading-none">{n}</span>
+                <span className="text-base font-bold text-white/90">{HU_NUMS[n]}</span>
               </button>
             )
           })}

@@ -114,11 +114,11 @@ const TREE_COMPONENTS: Record<TreeLevel, () => JSX.Element> = {
 }
 
 const TREE_SIZES: Record<TreeLevel, string> = {
-  0: 'w-16 h-20',
-  1: 'w-32 h-28',
-  2: 'w-40 h-48',
-  3: 'w-52 h-60',
-  4: 'w-60 h-72',
+  0: 'w-20 h-24',
+  1: 'w-36 h-32',
+  2: 'w-48 h-56',
+  3: 'w-60 h-72',
+  4: 'w-72 h-80',
 }
 
 export function Tree({ level }: Props): JSX.Element {

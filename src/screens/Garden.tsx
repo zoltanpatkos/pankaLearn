@@ -28,25 +28,28 @@ interface ModuleButtonProps {
   bg: string
   active: boolean
   onClick: () => void
+  dark?: boolean
 }
 
-function ModuleButton({ emoji, label, bg, active, onClick }: ModuleButtonProps) {
+function ModuleButton({ emoji, label, bg, active, onClick, dark = false }: ModuleButtonProps) {
   return (
     <button
       onClick={onClick}
       className={[
-        'flex flex-col items-center justify-center gap-1.5',
-        'rounded-3xl shadow-2xl px-4 py-3 min-w-[120px] min-h-[100px]',
-        'border-4 border-white/30',
+        'flex flex-col items-center justify-center gap-2',
+        'rounded-3xl shadow-2xl px-5 py-4 min-w-[148px] min-h-[124px]',
+        dark ? 'border-4 border-black/10' : 'border-4 border-white/35',
         'transition-transform active:scale-90 duration-100',
         bg,
         active ? '' : 'opacity-55',
       ].join(' ')}
     >
-      <span className="text-5xl leading-none">{emoji}</span>
-      <span className="text-white font-bold text-lg drop-shadow leading-tight">{label}</span>
+      <span className="text-6xl leading-none">{emoji}</span>
+      <span className={`font-black text-xl drop-shadow leading-tight ${dark ? 'text-yellow-900' : 'text-white'}`}>
+        {label}
+      </span>
       {!active && (
-        <span className="text-white/85 text-xs bg-black/25 rounded-full px-2 py-0.5 leading-tight">
+        <span className={`text-xs rounded-full px-2 py-0.5 leading-tight ${dark ? 'text-yellow-800 bg-black/10' : 'text-white/85 bg-black/25'}`}>
           Hamarosan
         </span>
       )}
@@ -178,26 +181,27 @@ export function Garden({ mascotId, equippedItems, mathFlowers, readingFlowers, e
     <div className="relative w-screen h-screen overflow-hidden select-none">
 
       {/* ── Sky ── */}
-      <div className="absolute inset-0 bg-gradient-to-b from-sky-400 via-sky-300 to-sky-200" />
+      <div className="absolute inset-0 bg-gradient-to-b from-sky-300 via-sky-100 to-white" />
 
       {/* ── Clouds ── */}
       <Cloud className="absolute w-36 top-[4%] left-[12%] opacity-90" />
       <Cloud className="absolute w-52 top-[6%] left-[42%] opacity-75" />
       <Cloud className="absolute w-28 top-[3%] right-[18%] opacity-85" />
 
-      {/* ── Ground / grass wave ── */}
+      {/* ── Ground / grass (multi-layer) ── */}
       <div className="absolute bottom-0 left-0 right-0 h-[42%]">
-        <svg
-          viewBox="0 0 1280 30"
-          preserveAspectRatio="none"
-          className="absolute top-0 left-0 w-full h-8"
-        >
-          <path
-            d="M0 22 Q80 4 160 22 Q240 40 320 22 Q400 4 480 22 Q560 40 640 22 Q720 4 800 22 Q880 40 960 22 Q1040 4 1120 22 Q1200 40 1280 22 L1280 30 L0 30 Z"
-            fill="#4ade80"
-          />
+        {/* Dark base */}
+        <div className="absolute inset-0 bg-green-800" />
+        {/* Mid gradient */}
+        <div className="absolute inset-0 bg-gradient-to-b from-green-600 to-green-800 mt-10" />
+        {/* Wave 1 — medium green */}
+        <svg viewBox="0 0 1280 36" preserveAspectRatio="none" className="absolute top-0 left-0 w-full h-10">
+          <path d="M0 26 Q80 6 160 26 Q240 46 320 26 Q400 6 480 26 Q560 46 640 26 Q720 6 800 26 Q880 46 960 26 Q1040 6 1120 26 Q1200 46 1280 26 L1280 36 L0 36 Z" fill="#16a34a"/>
         </svg>
-        <div className="absolute inset-0 bg-gradient-to-b from-green-400 to-green-700 mt-6" />
+        {/* Wave 2 — light green, offset */}
+        <svg viewBox="0 0 1280 28" preserveAspectRatio="none" className="absolute w-full h-8" style={{top:'0.9rem'}}>
+          <path d="M0 18 Q60 4 120 18 Q180 32 240 18 Q300 4 360 18 Q420 32 480 18 Q540 4 600 18 Q660 32 720 18 Q780 4 840 18 Q900 32 960 18 Q1020 4 1080 18 Q1140 32 1200 18 Q1240 8 1280 18 L1280 28 L0 28 Z" fill="#4ade80" opacity="0.75"/>
+        </svg>
       </div>
 
       {/* ── Decorative flowers in grass ── */}
@@ -213,7 +217,7 @@ export function Garden({ mascotId, equippedItems, mathFlowers, readingFlowers, e
       </div>
 
       {/* ── Panka avatar (right side, dressable) ── */}
-      <div className="absolute bottom-[24%] right-[12%] w-24 h-48 lg:w-32 lg:h-64">
+      <div className="absolute bottom-[24%] right-[10%] w-32 h-64">
         <PankaAvatarDressable equipped={equippedItems} />
       </div>
 
@@ -275,7 +279,8 @@ export function Garden({ mascotId, equippedItems, mathFlowers, readingFlowers, e
         <ModuleButton
           emoji="🔢"
           label="Matek"
-          bg="bg-indigo-500"
+          bg="bg-yellow-400"
+          dark
           active
           onClick={() => { unlockAudio(); onOpenMath() }}
         />
@@ -303,7 +308,7 @@ export function Garden({ mascotId, equippedItems, mathFlowers, readingFlowers, e
         <ModuleButton
           emoji="📚"
           label="Olvasás"
-          bg="bg-amber-500"
+          bg="bg-blue-500"
           active
           onClick={() => { unlockAudio(); onOpenReading() }}
         />
@@ -314,7 +319,7 @@ export function Garden({ mascotId, equippedItems, mathFlowers, readingFlowers, e
         <ModuleButton
           emoji="✏️"
           label="Írás"
-          bg="bg-rose-500"
+          bg="bg-purple-600"
           active
           onClick={() => { unlockAudio(); onOpenWriting() }}
         />
@@ -328,7 +333,7 @@ export function Garden({ mascotId, equippedItems, mathFlowers, readingFlowers, e
         <ModuleButton
           emoji="✈️"
           label="Angol"
-          bg="bg-cyan-500"
+          bg="bg-green-500"
           active
           onClick={() => { unlockAudio(); onOpenEnglish() }}
         />

@@ -128,6 +128,7 @@ export function WritingModule({ mascotId, lockedWardrobeItems, onBack, onRoundCo
 
   const { activeReward, rewardKey, triggerMicro, triggerMedium, triggerError } = useRewards({
     onTreeLevelUp: () => {},
+    confettiColors: ['#9333ea', '#a855f7', '#c084fc', '#6b21a8', '#ede9fe'],
   })
 
   // Keep taskIndexRef in sync
@@ -379,9 +380,9 @@ export function WritingModule({ mascotId, lockedWardrobeItems, onBack, onRoundCo
     <div className="flex gap-2 flex-1 justify-center">
       {Array.from({ length: TASKS_PER_ROUND }, (_, i) => (
         <div key={i} className={[
-          'w-5 h-5 rounded-full border-2 border-white/60 transition-all duration-300',
-          i < taskIndex   ? 'bg-yellow-400 border-yellow-300 scale-110' :
-          i === taskIndex ? 'bg-white scale-110' : 'bg-white/30',
+          'w-7 h-7 rounded-full border-2 transition-all duration-300',
+          i < taskIndex   ? 'bg-purple-400 border-purple-300 scale-110' :
+          i === taskIndex ? 'bg-purple-500 border-purple-400 scale-110' : 'bg-gray-200 border-gray-300',
         ].join(' ')} />
       ))}
     </div>
@@ -391,29 +392,29 @@ export function WritingModule({ mascotId, lockedWardrobeItems, onBack, onRoundCo
 
   if (phase === 'select') {
     return (
-      <div className="relative w-screen h-screen overflow-hidden select-none bg-gradient-to-b from-rose-400 via-pink-400 to-fuchsia-400 flex flex-col">
-        <div className="flex items-center px-4 pt-4 gap-3">
+      <div className="relative w-screen h-screen overflow-hidden select-none bg-gradient-to-b from-purple-600 via-purple-500 to-violet-400 flex flex-col">
+        <div className="mx-3 mt-3 bg-white/90 rounded-2xl shadow-lg flex items-center px-3 py-2.5 gap-3">
           <button onClick={handleBack}
-            className="bg-white/80 active:bg-white rounded-2xl px-4 py-2.5 text-rose-900 font-bold text-lg shadow border-2 border-white/60 active:scale-95 transition-transform">
+            className="bg-purple-100 active:bg-purple-200 rounded-xl px-3 py-2 text-purple-900 font-bold text-base border border-purple-300 active:scale-95 transition-transform">
             ← Kert
           </button>
-          <h1 className="text-3xl font-bold text-white drop-shadow flex-1 text-center pr-16">✏️ Írás</h1>
+          <h1 className="text-2xl font-black text-purple-800 drop-shadow-sm flex-1 text-center">✏️ Írás</h1>
         </div>
         <div className="flex flex-col items-center justify-center flex-1 gap-8 px-8 pb-8">
           <div className="w-36 h-36 drop-shadow-xl"><Illustration /></div>
           <p className="text-white font-bold text-2xl text-center drop-shadow">Melyik játékot választod?</p>
           <div className="flex gap-5 w-full max-w-sm">
             <button onClick={() => startRound('trace')}
-              className="flex-1 flex flex-col items-center gap-3 bg-rose-300 active:bg-rose-200 rounded-3xl py-6 shadow-2xl border-4 border-rose-200 active:scale-95 transition-transform">
+              className="flex-1 flex flex-col items-center gap-3 bg-purple-400 active:bg-purple-300 rounded-3xl py-6 shadow-2xl border-4 border-purple-300 active:scale-95 transition-transform">
               <span className="text-5xl leading-none">✏️</span>
-              <span className="text-rose-900 font-bold text-xl text-center">Rajzold!</span>
-              <span className="text-rose-800 text-sm text-center px-2">Kövesd az ujjaddal!</span>
+              <span className="text-purple-900 font-bold text-xl text-center">Rajzold!</span>
+              <span className="text-purple-800 text-sm text-center px-2">Kövesd az ujjaddal!</span>
             </button>
             <button onClick={() => startRound('orient')}
-              className="flex-1 flex flex-col items-center gap-3 bg-fuchsia-300 active:bg-fuchsia-200 rounded-3xl py-6 shadow-2xl border-4 border-fuchsia-200 active:scale-95 transition-transform">
+              className="flex-1 flex flex-col items-center gap-3 bg-violet-400 active:bg-violet-300 rounded-3xl py-6 shadow-2xl border-4 border-violet-300 active:scale-95 transition-transform">
               <span className="text-5xl leading-none">🔍</span>
-              <span className="text-fuchsia-900 font-bold text-xl text-center">Melyik jó?</span>
-              <span className="text-fuchsia-800 text-sm text-center px-2">Mutasd a helyest!</span>
+              <span className="text-purple-900 font-bold text-xl text-center">Melyik jó?</span>
+              <span className="text-violet-800 text-sm text-center px-2">Mutasd a helyest!</span>
             </button>
           </div>
         </div>
@@ -425,8 +426,14 @@ export function WritingModule({ mascotId, lockedWardrobeItems, onBack, onRoundCo
 
   if (phase === 'round-end') {
     return (
-      <div className="relative w-screen h-screen overflow-hidden select-none bg-gradient-to-b from-rose-400 to-fuchsia-500 flex flex-col items-center justify-center gap-8 px-8">
-        <div className="text-[10rem] leading-none" style={{ animation: 'star-pop 1s ease-out forwards' }}>✏️</div>
+      <div className="relative w-screen h-screen overflow-hidden select-none bg-gradient-to-b from-purple-700 to-violet-600 flex flex-col items-center justify-center gap-8 px-8">
+        <div className="relative flex items-center justify-center w-72 h-52">
+          <span className="absolute top-1 left-6 text-5xl select-none" style={{ animation: 'star-pop 0.7s ease-out 0.3s both' }}>⭐</span>
+          <span className="absolute top-2 right-6 text-4xl select-none" style={{ animation: 'star-pop 0.7s ease-out 0.5s both' }}>✨</span>
+          <span className="absolute bottom-1 left-10 text-4xl select-none" style={{ animation: 'star-pop 0.7s ease-out 0.6s both' }}>⭐</span>
+          <span className="absolute bottom-0 right-10 text-5xl select-none" style={{ animation: 'star-pop 0.7s ease-out 0.45s both' }}>✨</span>
+          <div className="text-[11rem] leading-none select-none" style={{ animation: 'star-pop 1s ease-out forwards', filter: 'drop-shadow(0 0 30px #c084fc)' }}>✏️</div>
+        </div>
         <p className="text-white font-bold text-3xl text-center drop-shadow-lg">
           {mascot.name} szerint<br />szuper voltál!
         </p>
@@ -461,14 +468,14 @@ export function WritingModule({ mascotId, lockedWardrobeItems, onBack, onRoundCo
       : 'Rajzold!'
 
     return (
-      <div className="relative w-screen h-screen overflow-hidden select-none bg-gradient-to-b from-rose-400 via-pink-300 to-rose-200 flex flex-col">
-        <div className="flex items-center px-4 pt-4 gap-3 flex-shrink-0">
+      <div className="relative w-screen h-screen overflow-hidden select-none bg-gradient-to-b from-purple-600 via-purple-400 to-violet-300 flex flex-col">
+        <div className="mx-3 mt-3 bg-white/90 rounded-2xl shadow-lg flex items-center px-3 py-2.5 gap-3 flex-shrink-0">
           <button onClick={handleBack}
-            className="bg-white/80 active:bg-white rounded-2xl px-4 py-2.5 text-rose-900 font-bold text-lg shadow border-2 border-white/60 active:scale-95 transition-transform">
+            className="bg-purple-100 active:bg-purple-200 rounded-xl px-3 py-2 text-purple-900 font-bold text-base border border-purple-300 active:scale-95 transition-transform">
             ← Kert
           </button>
           <ProgressDots />
-          <div className="w-12 h-12 rounded-2xl overflow-hidden border-2 border-white/50 shadow flex-shrink-0">
+          <div className="w-11 h-11 rounded-xl overflow-hidden border-2 border-purple-100 shadow flex-shrink-0">
             <Illustration />
           </div>
         </div>
@@ -503,7 +510,7 @@ export function WritingModule({ mascotId, lockedWardrobeItems, onBack, onRoundCo
               🗑️ Töröld!
             </button>
             <button onClick={() => { unlockAudio(); handleTraceNext() }}
-              className="flex-[2] bg-rose-500 active:bg-rose-400 active:scale-95 text-white font-bold text-xl rounded-2xl py-3 border-2 border-rose-300 transition-transform shadow-xl">
+              className="flex-[2] bg-purple-600 active:bg-purple-500 active:scale-95 text-white font-bold text-xl rounded-2xl py-3 border-2 border-purple-400 transition-transform shadow-xl">
               ⏭ Tovább
             </button>
           </div>
@@ -516,13 +523,13 @@ export function WritingModule({ mascotId, lockedWardrobeItems, onBack, onRoundCo
 
   // ── ORIENT GAME ─────────────────────────────────────────────────────────────
 
-  if (!currentLetter) return <div className="w-screen h-screen bg-rose-400" />
+  if (!currentLetter) return <div className="w-screen h-screen bg-purple-600" />
 
   return (
-    <div className="relative w-screen h-screen overflow-hidden select-none bg-gradient-to-b from-fuchsia-400 via-purple-400 to-violet-400 flex flex-col">
+    <div className="relative w-screen h-screen overflow-hidden select-none bg-gradient-to-b from-purple-600 via-violet-500 to-indigo-400 flex flex-col">
       <div className="flex items-center px-4 pt-4 gap-3 flex-shrink-0">
         <button onClick={handleBack}
-          className="bg-white/80 active:bg-white rounded-2xl px-4 py-2.5 text-fuchsia-900 font-bold text-lg shadow border-2 border-white/60 active:scale-95 transition-transform">
+          className="bg-white/80 active:bg-white rounded-2xl px-4 py-2.5 text-purple-900 font-bold text-lg shadow border-2 border-white/60 active:scale-95 transition-transform">
           ← Kert
         </button>
         <ProgressDots />
