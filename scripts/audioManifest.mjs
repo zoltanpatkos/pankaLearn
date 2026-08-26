@@ -13,6 +13,8 @@
  *   Olvasás — rímpár szavak      20  hu-HU, syllable  (RHYME_PAIRS)
  *   Olvasás — betűhangok         15  hu-HU, normal
  *   Olvasás — betűépítő szavak   14  hu-HU, normal
+ *   Olvasás — digraph-klipek     16  hu-HU, digraph  (DIGRAPH_WORDS)
+ *   Olvasás — digraph visszajelzés 12 hu-HU, normal
  *   Matematika                   25  hu-HU, normal
  *   Angol — TPR EN               12  en-GB, normal
  *   Angol — TPR HU               12  hu-HU, normal
@@ -45,6 +47,10 @@ const hu = (text, type = 'normal', syllables) =>
              : { text, lang: 'hu-HU', type }
 
 const en = (text) => ({ text, lang: 'en-GB', type: 'normal' })
+
+// Digraph elongation clip: word slow -> pause -> digraph+vowel syllable very
+// slow -> pause -> "Hallod a [syllable] hangot?" — see buildSSML() type:'digraph'.
+const dg = (word, syllable) => ({ text: word, lang: 'hu-HU', type: 'digraph', word, syllable })
 
 // ── 1. Magyar dicséretek (39) ─────────────────────────────────────────────────
 
@@ -258,6 +264,25 @@ const LETTER_BUILD_WORD_ENTRIES = [
   hu('há'), hu('ne'), hu('va'), hu('le'), hu('me'),
   hu('ko'), hu('ra'), hu('be'),
 ]
+
+// Kétjegyű mássalhangzók (digraph) — lásd src/data/digraphData.ts
+const DIGRAPH_SYLLABLE = { ny: 'nyö', ty: 'työ', gy: 'gyö', sz: 'szö', cs: 'csö', zs: 'zsö' }
+
+// Szavankénti elnyújtás-klip (16) — szó lassan + kiemelt szótag + kérdés, egyben
+const DIGRAPH_HINT_ENTRIES = [
+  dg('nyúl', DIGRAPH_SYLLABLE.ny), dg('nyár', DIGRAPH_SYLLABLE.ny), dg('nyelv', DIGRAPH_SYLLABLE.ny),
+  dg('tyúk', DIGRAPH_SYLLABLE.ty),
+  dg('gyerek', DIGRAPH_SYLLABLE.gy), dg('gyűrű', DIGRAPH_SYLLABLE.gy), dg('gyümölcs', DIGRAPH_SYLLABLE.gy),
+  dg('szív', DIGRAPH_SYLLABLE.sz), dg('szőlő', DIGRAPH_SYLLABLE.sz), dg('szél', DIGRAPH_SYLLABLE.sz), dg('szék', DIGRAPH_SYLLABLE.sz),
+  dg('csillag', DIGRAPH_SYLLABLE.cs), dg('csirke', DIGRAPH_SYLLABLE.cs), dg('csiga', DIGRAPH_SYLLABLE.cs),
+  dg('zsák', DIGRAPH_SYLLABLE.zs), dg('zsemle', DIGRAPH_SYLLABLE.zs),
+]
+
+// Helyes/helytelen visszajelzés digraph-onként (12 = 6 + 6), Lilla (normal)
+const DIGRAPH_FEEDBACK_ENTRIES = Object.values(DIGRAPH_SYLLABLE).flatMap(syl => [
+  hu(`Igen! ${syl} — két betű, egy hang!`),
+  hu(`Próbáld újra! Figyeld a ${syl} hangot!`),
+])
 
 // ── 8. Matematika modul (25) ──────────────────────────────────────────────────
 
@@ -526,6 +551,8 @@ export const AUDIO_ENTRIES = [
   ...RHYME_WORD_ENTRIES,          // 20
   ...LETTER_SOUND_ENTRIES,        // 15
   ...LETTER_BUILD_WORD_ENTRIES,   // 14
+  ...DIGRAPH_HINT_ENTRIES,        // 16
+  ...DIGRAPH_FEEDBACK_ENTRIES,    // 12
   ...MATH_ENTRIES,                // 25
   ...TPR_EN_ENTRIES,              // 12
   ...TPR_HU_ENTRIES,              // 12

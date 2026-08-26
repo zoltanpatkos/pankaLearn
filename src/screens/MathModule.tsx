@@ -3,7 +3,7 @@ import type { JSX } from 'react'
 import confetti from 'canvas-confetti'
 import { MASCOTS, type MascotId } from '../mascots'
 import { speak, speakChained } from '../lib/tts'
-import { selectNextItem, recordAttempt, getItemWeight, getAverageWeight } from '../lib/adaptive'
+import { selectNextItem, recordAttempt, getItemWeight, loadStagedLevel, advanceStagedLevel, type StagedLevelState } from '../lib/adaptive'
 import { unlockAudio } from '../lib/audio'
 import { RewardOverlay } from '../components/RewardOverlay'
 import { DotPattern } from '../components/DotPattern'
@@ -236,37 +236,17 @@ interface TenPlusAssemblyTask {
 
 type TenPlusTask = TenPlusRecognitionTask | TenPlusAssemblyTask
 
-interface TenPlusLevelState { level: 1 | 2 | 3; tasksAtLevel: number }
-
 const TEN_PLUS_LEVEL_KEY = 'tenPlusLevelState'
 const TEN_PLUS_ROD_UNIT  = 22
 
-function loadTenPlusLevel(): TenPlusLevelState {
-  try {
-    const raw = JSON.parse(localStorage.getItem(TEN_PLUS_LEVEL_KEY) ?? 'null')
-    if (raw && (raw.level === 1 || raw.level === 2 || raw.level === 3) && typeof raw.tasksAtLevel === 'number') {
-      return raw as TenPlusLevelState
-    }
-  } catch { /* ignore malformed storage */ }
-  return { level: 1, tasksAtLevel: 0 }
-}
-
-function saveTenPlusLevel(state: TenPlusLevelState): void {
-  localStorage.setItem(TEN_PLUS_LEVEL_KEY, JSON.stringify(state))
+function loadTenPlusLevel(): StagedLevelState {
+  return loadStagedLevel(TEN_PLUS_LEVEL_KEY)
 }
 
 // Called after each successfully completed tenPlus task — steps the level up
 // once at least 5 tasks were done at the current level and mastery is high enough.
-function advanceTenPlusLevel(): TenPlusLevelState {
-  const cur = loadTenPlusLevel()
-  const tasksAtLevel = cur.tasksAtLevel + 1
-  const avg = getAverageWeight('math.tenPlus')
-  let level = cur.level
-  if (level === 1 && tasksAtLevel >= 5 && avg < 1.0) level = 2
-  else if (level === 2 && tasksAtLevel >= 5 && avg < 0.7) level = 3
-  const next: TenPlusLevelState = { level, tasksAtLevel: level === cur.level ? tasksAtLevel : 0 }
-  saveTenPlusLevel(next)
-  return next
+function advanceTenPlusLevel(): StagedLevelState {
+  return advanceStagedLevel(TEN_PLUS_LEVEL_KEY, 'math.tenPlus')
 }
 
 function makeAnswersInRange(correct: number, min: number, max: number): number[] {

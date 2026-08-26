@@ -112,6 +112,43 @@ export function speakChained(parts: string[]): void {
   }
 }
 
+// Web Speech API fallback for the digraph-elongation hint (used only when the
+// pre-generated Azure clip — see audioPlayer.ts playDigraphHint — is
+// unavailable). Doubling a digraph's last letter ("nyy") reads like English;
+// instead this slows the utterance rate directly and speaks a vowel-appended
+// syllable ("nye"), since a bare digraph has no standalone Hungarian reading.
+export function speakDigraphHint(word: string, syllable: string): void {
+  if (_muted) return
+  window.speechSynthesis.cancel()
+
+  const doSpeak = async (): Promise<void> => {
+    const voice = getHungarianVoice()
+    const speakOne = (text: string, rate: number): Promise<void> =>
+      new Promise(resolve => {
+        const u = makeU(text, rate, voice)
+        u.onend = () => resolve()
+        window.speechSynthesis.speak(u)
+      })
+
+    await speakOne(word, 0.7)
+    if (_muted) return
+    await delay(600)
+    if (_muted) return
+    await speakOne(syllable, 0.5)
+    if (_muted) return
+    await delay(400)
+    if (_muted) return
+    await speakOne(`Hallod a ${syllable} hangot?`, 0.85)
+    if (!_muted) silentPad(voice)
+  }
+
+  if (window.speechSynthesis.getVoices().length > 0) {
+    doSpeak()
+  } else {
+    window.speechSynthesis.addEventListener('voiceschanged', doSpeak, { once: true })
+  }
+}
+
 export function speakSyllabified(syllables: string[], word: string): void {
   if (_muted) return
   window.speechSynthesis.cancel()

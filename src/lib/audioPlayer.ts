@@ -1,5 +1,5 @@
 import { Howl } from 'howler'
-import { isMuted, speak, speakEnglish, speakSyllabified } from './tts'
+import { isMuted, speak, speakEnglish, speakSyllabified, speakDigraphHint } from './tts'
 
 // ── Slug (megegyezik a generateAudio.mjs toSlug logikájával) ─────────────────
 
@@ -25,8 +25,7 @@ function slugFor(
   lang: 'hu-HU' | 'en-GB',
   type: 'normal' | 'syllable'
 ): string {
-  // TESZT: hu_noemi_ prefix → visszaállításhoz: 'hu' : 'en'
-  const prefix = type === 'syllable' ? 'hu_sy' : (lang === 'hu-HU' ? 'hu_noemi' : 'en')
+  const prefix = type === 'syllable' ? 'hu_sy' : (lang === 'hu-HU' ? 'hu' : 'en')
   return `${prefix}_${toSlug(text)}`
 }
 
@@ -83,6 +82,11 @@ export async function playAudio(
 ): Promise<void> {
   if (isMuted()) return
 
+  // Kill any Web Speech utterance a reward hook (triggerMicro/Small/Error)
+  // may have just queued — it runs on a separate audio pipeline from Howler,
+  // so without this it would play on top of the clip below.
+  window.speechSynthesis.cancel()
+
   await _ready
 
   const type = options?.syllables ? 'syllable' : 'normal'
@@ -99,6 +103,27 @@ export async function playAudio(
   }
 
   wsFallback(text, lang, options)
+}
+
+/**
+ * Kétjegyű mássalhangzó elnyújtás-klip lejátszása (előre generált Azure MP3,
+ * "hu_dg_{szó}"), Web Speech fallback-kel ha a fájl nincs meg.
+ */
+export async function playDigraphHint(word: string, syllable: string): Promise<void> {
+  if (isMuted()) return
+  window.speechSynthesis.cancel()
+  await _ready
+  const slug = `hu_dg_${toSlug(word)}`
+  if (_available.has(slug)) {
+    return new Promise(resolve => {
+      const howl = getHowl(slug)
+      howl.once('end', () => resolve())
+      howl.once('loaderror', () => { speakDigraphHint(word, syllable); resolve() })
+      howl.once('playerror', () => { speakDigraphHint(word, syllable); resolve() })
+      howl.play()
+    })
+  }
+  speakDigraphHint(word, syllable)
 }
 
 /**

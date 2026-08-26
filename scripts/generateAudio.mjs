@@ -59,7 +59,7 @@ function toSlug(text) {
 }
 
 export function audioFilename(text, lang, type = 'normal') {
-  const prefix = type === 'syllable' ? 'hu_sy' : (lang === 'hu-HU' ? 'hu' : 'en')
+  const prefix = type === 'syllable' ? 'hu_sy' : type === 'digraph' ? 'hu_dg' : (lang === 'hu-HU' ? 'hu' : 'en')
   return `${prefix}_${toSlug(text)}.mp3`
 }
 
@@ -71,6 +71,24 @@ function escapeXml(s) {
 
 function buildSSML(entry) {
   const { text, lang, type = 'normal', syllables } = entry
+
+  // Isolates a digraph's sound within a word: the full word spoken slowly,
+  // a pause, the digraph+vowel syllable spoken very slowly (a bare digraph
+  // like "ny" has no pronounceable Hungarian reading on its own), another
+  // pause, then the spoken prompt — all as one clip.
+  if (type === 'digraph') {
+    const { word, syllable } = entry
+    const inner =
+      `<prosody rate='0.7'>${escapeXml(word)}</prosody>` +
+      ` <break time='600ms'/> ` +
+      `<prosody rate='0.5'>${escapeXml(syllable)}</prosody>` +
+      ` <break time='400ms'/> ` +
+      `Hallod a ${escapeXml(syllable)} hangot?`
+    return (
+      `<speak version='1.0' xmlns='http://www.w3.org/2001/10/synthesis' xml:lang='hu-HU'>` +
+      `<voice name='${VOICE_SYLLABLE}'>${inner}</voice></speak>`
+    )
+  }
 
   if (type === 'syllable') {
     // syllables mező (string[]) vagy '·' elválasztás fallback

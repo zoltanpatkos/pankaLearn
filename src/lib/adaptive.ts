@@ -90,3 +90,32 @@ export function getAverageWeight(taskType: string): number {
   if (items.length === 0) return NEW_WEIGHT
   return items.reduce((sum, s) => sum + s.weight, 0) / items.length
 }
+
+// Shared 3-tier difficulty staging: a task type progresses 1 -> 2 -> 3 only
+// once at least 5 tasks were completed at the current level AND aggregate
+// mastery (getAverageWeight) has crossed the level's threshold — prevents
+// flip-flopping on a lucky/unlucky streak. Never regresses.
+export interface StagedLevelState { level: 1 | 2 | 3; tasksAtLevel: number }
+
+export function loadStagedLevel(storageKey: string): StagedLevelState {
+  try {
+    const raw = JSON.parse(localStorage.getItem(storageKey) ?? 'null')
+    if (raw && (raw.level === 1 || raw.level === 2 || raw.level === 3) && typeof raw.tasksAtLevel === 'number') {
+      return raw as StagedLevelState
+    }
+  } catch { /* ignore malformed storage */ }
+  return { level: 1, tasksAtLevel: 0 }
+}
+
+// Call after each successfully completed task for the given taskType.
+export function advanceStagedLevel(storageKey: string, taskType: string): StagedLevelState {
+  const cur = loadStagedLevel(storageKey)
+  const tasksAtLevel = cur.tasksAtLevel + 1
+  const avg = getAverageWeight(taskType)
+  let level = cur.level
+  if (level === 1 && tasksAtLevel >= 5 && avg < 1.0) level = 2
+  else if (level === 2 && tasksAtLevel >= 5 && avg < 0.7) level = 3
+  const next: StagedLevelState = { level, tasksAtLevel: level === cur.level ? tasksAtLevel : 0 }
+  localStorage.setItem(storageKey, JSON.stringify(next))
+  return next
+}

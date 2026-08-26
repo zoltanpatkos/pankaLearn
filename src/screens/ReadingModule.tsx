@@ -11,7 +11,10 @@ import { AnswerButton } from '../components/AnswerButton'
 import { READING_WORDS, type WordEntry } from '../data/readingWords'
 import { RHYME_PAIRS, type RhymePair } from '../data/rhymeData'
 import { LETTER_BUILD_WORDS, type LetterBuildWord } from '../data/letterBuildData'
-import { selectNextItem, recordAttempt, getItemWeight } from '../lib/adaptive'
+import { LOWERCASE_LETTERS, type LowercaseLetterEntry } from '../data/lowercaseLetterData'
+import { DIGRAPH_WORDS, DIGRAPHS, DIGRAPH_SYLLABLE, type Digraph, type DigraphWord } from '../data/digraphData'
+import { selectNextItem, recordAttempt, getItemWeight, loadStagedLevel, advanceStagedLevel } from '../lib/adaptive'
+import { playDigraphHint, playAudio } from '../lib/audioPlayer'
 
 interface Props {
   mascotId: MascotId
@@ -20,7 +23,7 @@ interface Props {
   onRoundComplete: (unlockedItemId: string | null) => void
 }
 
-type GameType = 'clapper' | 'assembler' | 'rhyme' | 'wordpic' | 'letterbuild'
+type GameType = 'clapper' | 'assembler' | 'rhyme' | 'wordpic' | 'letterbuild' | 'lowercase' | 'digraph'
 type Phase = 'select' | 'game'
 
 const TASKS_PER_ROUND = 5
@@ -33,6 +36,13 @@ const LETTER_SOUNDS: Record<string, string> = {
   F: 'Fff', S: 'Sss', M: 'Mmm', N: 'Nnn', L: 'Lll', V: 'Vvv', R: 'Rrr',
   T: 'T', P: 'P', K: 'K', H: 'H', B: 'B',
   A: 'Aaa', E: 'Eee', O: 'Ooo',
+}
+
+// Strips Hungarian diacritics for itemId use, e.g. "nyúl" -> "nyul".
+function slug(word: string): string {
+  return word
+    .replace(/[áà]/g, 'a').replace(/[éè]/g, 'e').replace(/[íì]/g, 'i')
+    .replace(/[óòöő]/g, 'o').replace(/[úùüű]/g, 'u')
 }
 
 function shuffle<T>(arr: T[]): T[] {
@@ -87,6 +97,18 @@ export function ReadingModule({ mascotId, lockedWardrobeItems, onBack, onRoundCo
   const [letterCards, setLetterCards]                 = useState<LetterCard[]>([])
   const [letterBuildScaffold, setLetterBuildScaffold] = useState<1 | 2 | 3>(2)
   const letterBuildLocked = useRef(false)
+
+  // Lowercase-matching state
+  const [lowercaseLetter, setLowercaseLetter]     = useState<LowercaseLetterEntry | null>(null)
+  const [lowercaseOptions, setLowercaseOptions]   = useState<string[]>([])
+  const [lowercaseSelected, setLowercaseSelected] = useState<number | null>(null)
+  const [lowercaseResult, setLowercaseResult]     = useState<'idle' | 'correct' | 'wrong'>('idle')
+
+  // Digraph state
+  const [digraphTask, setDigraphTask]         = useState<DigraphWord | null>(null)
+  const [digraphOptions, setDigraphOptions]   = useState<Digraph[]>([])
+  const [digraphSelected, setDigraphSelected] = useState<number | null>(null)
+  const [digraphResult, setDigraphResult]     = useState<'idle' | 'correct' | 'wrong'>('idle')
 
   const { activeReward, rewardKey, triggerMicro, triggerSmall, triggerMedium, triggerError } = useRewards({
     onTreeLevelUp: () => {},
@@ -156,6 +178,27 @@ export function ReadingModule({ mascotId, lockedWardrobeItems, onBack, onRoundCo
     speakChained([...word.letterSounds, word.word])
   }
 
+  const startLowercaseTask = (): void => {
+    const level = loadStagedLevel('lowercaseLevelState').level
+    const pool = LOWERCASE_LETTERS.filter(l => l.level === level)
+    const entry = selectNextItem('reading.lowercase', pool, l => l.lower)
+    setLowercaseLetter(entry)
+    setLowercaseOptions(shuffle([entry.lower, ...shuffle(entry.distractors).slice(0, 2)]))
+    setLowercaseSelected(null)
+    setLowercaseResult('idle')
+    speak(`Melyik a kis ${entry.upper}?`)
+  }
+
+  const startDigraphTask = (): void => {
+    const word = selectNextItem('reading.digraph', DIGRAPH_WORDS, w => slug(w.word))
+    const otherDigraphs = shuffle(DIGRAPHS.filter(d => d !== word.digraph)).slice(0, 2)
+    setDigraphTask(word)
+    setDigraphOptions(shuffle([word.digraph, ...otherDigraphs]))
+    setDigraphSelected(null)
+    setDigraphResult('idle')
+    void playDigraphHint(word.word, DIGRAPH_SYLLABLE[word.digraph])
+  }
+
   // ── Shared ────────────────────────────────────────────────────────────────
 
   const callRoundComplete = (): void => {
@@ -201,6 +244,10 @@ export function ReadingModule({ mascotId, lockedWardrobeItems, onBack, onRoundCo
       startRhymeTask(selectNextItem('reading.rhyme', RHYME_PAIRS, p => p.prompt))
     } else if (gt === 'wordpic') {
       startWordPicTask(selectNextItem('reading.wordPicture', LEVEL1_ALL, w => w.word))
+    } else if (gt === 'lowercase') {
+      startLowercaseTask()
+    } else if (gt === 'digraph') {
+      startDigraphTask()
     } else {
       startLetterBuildTask(selectNextItem('reading.letterBuild', LETTER_BUILD_WORDS, w => w.word))
     }
@@ -216,6 +263,10 @@ export function ReadingModule({ mascotId, lockedWardrobeItems, onBack, onRoundCo
       speakSyllabified(wordPicTarget.syllables, wordPicTarget.word)
     } else if (gameType === 'letterbuild' && letterBuildWord) {
       speakChained([...letterBuildWord.letterSounds, letterBuildWord.word])
+    } else if (gameType === 'lowercase' && lowercaseLetter) {
+      speak(`Melyik a kis ${lowercaseLetter.upper}?`)
+    } else if (gameType === 'digraph' && digraphTask) {
+      void playDigraphHint(digraphTask.word, DIGRAPH_SYLLABLE[digraphTask.digraph])
     }
   }
 
@@ -359,6 +410,48 @@ export function ReadingModule({ mascotId, lockedWardrobeItems, onBack, onRoundCo
     }
   }
 
+  // ── Lowercase-matching handler ────────────────────────────────────────────
+
+  const handleLowercaseTap = (idx: number): void => {
+    if (lowercaseResult !== 'idle' || !lowercaseLetter) return
+    setLowercaseSelected(idx)
+    const isCorrect = lowercaseOptions[idx] === lowercaseLetter.lower
+    setLowercaseResult(isCorrect ? 'correct' : 'wrong')
+    if (isCorrect) {
+      speak(`Igen! Nagy ${lowercaseLetter.upper}, kis ${lowercaseLetter.lower} — ugyanaz a betű!`)
+    } else {
+      speak(`Próbáld újra! Melyik a kis ${lowercaseLetter.upper}?`)
+    }
+    advance(isCorrect, 'reading.lowercase', lowercaseLetter.lower, 1600, () => startLowercaseTask())
+    if (isCorrect) {
+      advanceStagedLevel('lowercaseLevelState', 'reading.lowercase')
+    } else {
+      setTimeout(() => { setLowercaseSelected(null); setLowercaseResult('idle') }, 1600)
+    }
+  }
+
+  // ── Digraph handler ────────────────────────────────────────────────────────
+
+  const handleDigraphTap = (idx: number): void => {
+    if (digraphResult !== 'idle' || !digraphTask) return
+    setDigraphSelected(idx)
+    const isCorrect = digraphOptions[idx] === digraphTask.digraph
+    setDigraphResult(isCorrect ? 'correct' : 'wrong')
+    const syllable = DIGRAPH_SYLLABLE[digraphTask.digraph]
+    // advance() first — it synchronously fires the reward hook's generic
+    // Web Speech praise; playAudio() below cancels that before it's audible
+    // and plays our own Azure clip instead (see audioPlayer.ts).
+    advance(isCorrect, 'reading.digraph', slug(digraphTask.word), 1800, () => startDigraphTask())
+    if (isCorrect) {
+      void playAudio(`Igen! ${syllable} — két betű, egy hang!`, 'hu-HU')
+    } else {
+      void playAudio(`Próbáld újra! Figyeld a ${syllable} hangot!`, 'hu-HU')
+    }
+    if (!isCorrect) {
+      setTimeout(() => { setDigraphSelected(null); setDigraphResult('idle') }, 1800)
+    }
+  }
+
   // ── SELECT ────────────────────────────────────────────────────────────────
 
   if (phase === 'select') {
@@ -373,6 +466,8 @@ export function ReadingModule({ mascotId, lockedWardrobeItems, onBack, onRoundCo
           { emoji: '🎵', label: 'Rímel!',       sublabel: 'Mi rímel erre?',      onClick: () => handleStart('rhyme') },
           { emoji: '🔍', label: 'Melyik szó?',  sublabel: 'Koppints a szóra!',   onClick: () => handleStart('wordpic') },
           { emoji: '🔤', label: 'Építsd!',      sublabel: 'Rakd ki a betűket!',  onClick: () => handleStart('letterbuild') },
+          { emoji: '🔡', label: 'Melyik a kis betű?', sublabel: 'Nagy és kis betű', onClick: () => handleStart('lowercase') },
+          { emoji: '🔤', label: 'Két betű, egy hang!', sublabel: 'ny, ty, gy, sz, cs, zs', onClick: () => handleStart('digraph') },
         ]}
         onBack={handleBack}
         onRepeat={() => speak('Melyik játékot választod?')}
@@ -612,6 +707,100 @@ export function ReadingModule({ mascotId, lockedWardrobeItems, onBack, onRoundCo
                 )}
               </button>
             ))}
+          </div>
+
+        </div>
+        <RewardOverlay type={activeReward} rewardKey={rewardKey} mascotId={mascotId} />
+      </TaskShell>
+    )
+  }
+
+  // ── LOWERCASE-MATCHING ────────────────────────────────────────────────────
+
+  if (gameType === 'lowercase' && lowercaseLetter) {
+    return (
+      <TaskShell hue="blue" progressIndex={taskIndex} total={TASKS_PER_ROUND} onBack={handleBack} onRepeat={handleRepeat}>
+        <div className="flex flex-col items-center justify-between h-full py-5 px-4">
+
+          <div className="flex flex-col items-center gap-2 flex-shrink-0">
+            <div className="w-14 h-14 rounded-full bg-white flex items-center justify-center" style={{ boxShadow: 'var(--sh-1)' }}>
+              <div className="w-10 h-10"><Illustration /></div>
+            </div>
+            <p className="text-blue-900 font-black leading-none" style={{ fontSize: 96 }}>{lowercaseLetter.upper}</p>
+            <p className="text-blue-700 font-semibold text-lg text-center">Melyik a kis betű?</p>
+          </div>
+
+          <div className="flex gap-3 w-full flex-shrink-0">
+            {lowercaseOptions.map((opt, i) => {
+              const isSel = lowercaseSelected === i
+              const isCorrectOpt = opt === lowercaseLetter.lower
+              let cls = 'border-gray-200 bg-gray-50'
+              if (isSel && isCorrectOpt)  cls = 'border-green-400 bg-green-100 scale-105'
+              if (isSel && !isCorrectOpt) cls = 'border-red-400 bg-red-100'
+              if (lowercaseResult !== 'idle' && !isSel) cls += ' opacity-40'
+              return (
+                <button key={i}
+                  onClick={() => { unlockAudio(); handleLowercaseTap(i) }}
+                  disabled={lowercaseResult !== 'idle'}
+                  style={{ borderRadius: 'var(--r-card)', boxShadow: 'var(--sh-1)',
+                    animation: isSel && !isCorrectOpt ? 'shake-no 0.5s ease-out' : 'none' }}
+                  className={`flex-1 flex items-center justify-center py-7 border-4 transition-all duration-200 ${cls}`}>
+                  <span className="text-6xl font-bold text-blue-900">{opt}</span>
+                </button>
+              )
+            })}
+          </div>
+
+        </div>
+        <RewardOverlay type={activeReward} rewardKey={rewardKey} mascotId={mascotId} />
+      </TaskShell>
+    )
+  }
+
+  // ── DIGRAPH ───────────────────────────────────────────────────────────────
+
+  if (gameType === 'digraph' && digraphTask) {
+    const highlightLen = digraphTask.digraph.length
+    return (
+      <TaskShell hue="blue" progressIndex={taskIndex} total={TASKS_PER_ROUND} onBack={handleBack} onRepeat={handleRepeat}>
+        <div className="flex flex-col items-center justify-between h-full py-5 px-4">
+
+          <div className="flex flex-col items-center gap-2 flex-shrink-0">
+            <div className="w-14 h-14 rounded-full bg-white flex items-center justify-center" style={{ boxShadow: 'var(--sh-1)' }}>
+              <div className="w-10 h-10"><Illustration /></div>
+            </div>
+            <p className="text-blue-700 font-semibold text-lg text-center">Melyik hangot hallod?</p>
+          </div>
+
+          <div className="flex flex-col items-center gap-3 flex-shrink-0">
+            <span className="text-7xl leading-none">{digraphTask.emoji}</span>
+            <p className="text-4xl font-bold tracking-widest">
+              <span className="bg-yellow-200 text-blue-900 rounded px-1 uppercase">
+                {digraphTask.word.slice(0, highlightLen)}
+              </span>
+              <span className="text-blue-900">{digraphTask.word.slice(highlightLen)}</span>
+            </p>
+          </div>
+
+          <div className="flex gap-3 w-full flex-shrink-0">
+            {digraphOptions.map((opt, i) => {
+              const isSel = digraphSelected === i
+              const isCorrectOpt = opt === digraphTask.digraph
+              let cls = 'border-gray-200 bg-gray-50'
+              if (isSel && isCorrectOpt)  cls = 'border-green-400 bg-green-100 scale-105'
+              if (isSel && !isCorrectOpt) cls = 'border-red-400 bg-red-100'
+              if (digraphResult !== 'idle' && !isSel) cls += ' opacity-40'
+              return (
+                <button key={i}
+                  onClick={() => { unlockAudio(); handleDigraphTap(i) }}
+                  disabled={digraphResult !== 'idle'}
+                  style={{ borderRadius: 'var(--r-card)', boxShadow: 'var(--sh-1)',
+                    animation: isSel && !isCorrectOpt ? 'shake-no 0.5s ease-out' : 'none' }}
+                  className={`flex-1 flex items-center justify-center py-7 border-4 transition-all duration-200 ${cls}`}>
+                  <span className="text-5xl font-bold text-blue-900 uppercase">{opt}</span>
+                </button>
+              )
+            })}
           </div>
 
         </div>
