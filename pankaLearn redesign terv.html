@@ -1,0 +1,1735 @@
+<!doctype html>
+<html lang="hu">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>pankaLearn — Redesign terv</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Fredoka:wght@500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --bg:        oklch(0.985 0.005 85);
+    --paper:     #ffffff;
+    --ink:       oklch(0.22 0.015 250);
+    --ink-soft:  oklch(0.42 0.015 250);
+    --ink-mute:  oklch(0.58 0.012 250);
+    --rule:      oklch(0.90 0.008 250);
+    --rule-soft: oklch(0.94 0.006 250);
+    --hl-warm:   oklch(0.96 0.025 80);
+
+    --yel: #fbbf24;     /* Matek */
+    --yel-bg:#fde68a;
+    --yel-ink:#78350f;
+    --blu: #3b82f6;     /* Olvasás */
+    --blu-bg:#dbeafe;
+    --blu-ink:#1e3a8a;
+    --pur: #8b5cf6;     /* Írás */
+    --pur-bg:#ede9fe;
+    --pur-ink:#4c1d95;
+    --grn: #22c55e;     /* Angol */
+    --grn-bg:#dcfce7;
+    --grn-ink:#14532d;
+    --sky-1:#bae6fd;
+    --sky-2:#e0f2fe;
+    --grass-1:#16a34a;
+    --grass-2:#22c55e;
+    --grass-3:#4ade80;
+
+    --r-sm: 10px;
+    --r-md: 14px;
+    --r-lg: 22px;
+    --r-xl: 28px;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--ink);font-family:"DM Sans",system-ui,sans-serif;font-feature-settings:"ss01","cv11"}
+  body{font-size:15px;line-height:1.6}
+  a{color:inherit}
+
+  .page{
+    max-width:1180px;
+    margin:0 auto;
+    padding:56px 48px 96px;
+  }
+
+  /* ─── Header ───────────────────────────────────────────────── */
+  .doc-head{
+    border-top:1px solid var(--ink);
+    border-bottom:1px solid var(--rule);
+    padding:28px 0 22px;
+    margin-bottom:36px;
+    display:grid;
+    grid-template-columns: 1fr auto;
+    gap:8px 32px;
+    align-items:end;
+  }
+  .kicker{
+    font-family:"JetBrains Mono",ui-monospace,monospace;
+    font-size:11px;
+    text-transform:uppercase;
+    letter-spacing:0.14em;
+    color:var(--ink-mute);
+    margin-bottom:8px;
+  }
+  .doc-head h1{
+    font-family:"DM Sans",sans-serif;
+    font-weight:700;
+    font-size:46px;
+    line-height:1.05;
+    margin:0;
+    letter-spacing:-0.025em;
+  }
+  .doc-head h1 em{font-style:normal;color:var(--ink-mute);font-weight:500}
+  .doc-head .lede{
+    grid-column:1 / -1;
+    max-width:72ch;
+    color:var(--ink-soft);
+    font-size:16px;
+    margin:14px 0 0;
+  }
+  .meta{
+    grid-column:1 / -1;
+    display:flex;
+    flex-wrap:wrap;
+    gap:6px 22px;
+    margin-top:22px;
+    padding-top:18px;
+    border-top:1px solid var(--rule-soft);
+    font-family:"JetBrains Mono",ui-monospace,monospace;
+    font-size:11px;
+    text-transform:uppercase;
+    letter-spacing:0.08em;
+    color:var(--ink-mute);
+  }
+  .meta b{color:var(--ink);font-weight:500;letter-spacing:0.04em}
+
+  /* ─── Table of contents ────────────────────────────────────── */
+  .toc{
+    display:grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap:0;
+    border:1px solid var(--rule);
+    border-radius:var(--r-md);
+    overflow:hidden;
+    margin-bottom:64px;
+    background:var(--paper);
+  }
+  .toc a{
+    display:flex;
+    flex-direction:column;
+    gap:4px;
+    padding:14px 16px;
+    border-right:1px solid var(--rule-soft);
+    border-bottom:1px solid var(--rule-soft);
+    text-decoration:none;
+    color:var(--ink);
+    font-size:13px;
+    font-weight:500;
+    transition:background .15s;
+  }
+  .toc a:hover{background:var(--hl-warm)}
+  .toc a:nth-child(4n){border-right:none}
+  .toc a:nth-last-child(-n+4){border-bottom:none}
+  .toc a .num{
+    font-family:"JetBrains Mono",ui-monospace,monospace;
+    font-size:10px;
+    color:var(--ink-mute);
+    letter-spacing:0.08em;
+  }
+
+  /* ─── Sections ─────────────────────────────────────────────── */
+  section{margin:80px 0 0}
+  section > .sec-head{
+    display:grid;
+    grid-template-columns: 80px 1fr;
+    gap:24px;
+    align-items:baseline;
+    padding-bottom:18px;
+    border-bottom:1px solid var(--ink);
+    margin-bottom:32px;
+  }
+  .sec-head .sec-num{
+    font-family:"JetBrains Mono",ui-monospace,monospace;
+    font-size:13px;
+    color:var(--ink-mute);
+    letter-spacing:0.1em;
+    padding-top:6px;
+  }
+  .sec-head h2{
+    font-family:"DM Sans",sans-serif;
+    font-weight:700;
+    font-size:32px;
+    margin:0;
+    letter-spacing:-0.02em;
+    line-height:1.1;
+  }
+  .sec-head h2 .sub{
+    display:block;
+    font-weight:500;
+    font-size:15px;
+    color:var(--ink-mute);
+    margin-top:6px;
+    letter-spacing:0;
+  }
+
+  /* ─── Generic content ──────────────────────────────────────── */
+  h3{
+    font-family:"DM Sans",sans-serif;
+    font-weight:600;
+    font-size:18px;
+    margin:32px 0 10px;
+    letter-spacing:-0.01em;
+  }
+  h4{
+    font-family:"JetBrains Mono",ui-monospace,monospace;
+    font-weight:500;
+    font-size:11px;
+    text-transform:uppercase;
+    letter-spacing:0.12em;
+    color:var(--ink-mute);
+    margin:24px 0 8px;
+  }
+  p{margin:0 0 12px;color:var(--ink-soft);text-wrap:pretty}
+  p strong{color:var(--ink);font-weight:600}
+  ul,ol{margin:0 0 14px;padding-left:20px;color:var(--ink-soft)}
+  li{margin:5px 0;text-wrap:pretty}
+  li strong{color:var(--ink);font-weight:600}
+
+  code, .mono{font-family:"JetBrains Mono",ui-monospace,monospace;font-size:12.5px}
+  p code, li code{
+    background:var(--hl-warm);
+    border:1px solid oklch(0.92 0.02 80);
+    border-radius:4px;
+    padding:1px 5px;
+    font-size:11.5px;
+    color:var(--ink);
+  }
+
+  /* ─── 2-column layout for screen sections ──────────────────── */
+  .split{
+    display:grid;
+    grid-template-columns: 1fr 440px;
+    gap:48px;
+    align-items:start;
+  }
+  .split.flip{grid-template-columns: 440px 1fr}
+  @media (max-width:1100px){
+    .split, .split.flip{grid-template-columns: 1fr;gap:32px}
+  }
+
+  /* ─── Inline finding/recommend boxes ───────────────────────── */
+  .finding, .rec{
+    border:1px solid var(--rule);
+    border-radius:var(--r-md);
+    padding:14px 16px;
+    margin:8px 0 14px;
+    background:var(--paper);
+  }
+  .finding{
+    border-left:3px solid #d97706;
+    background:linear-gradient(to right, oklch(0.97 0.025 70) 0%, var(--paper) 60%);
+  }
+  .rec{
+    border-left:3px solid #15803d;
+    background:linear-gradient(to right, oklch(0.97 0.025 145) 0%, var(--paper) 60%);
+  }
+  .finding .lbl, .rec .lbl{
+    font-family:"JetBrains Mono",ui-monospace,monospace;
+    font-size:10px;
+    text-transform:uppercase;
+    letter-spacing:0.12em;
+    font-weight:500;
+    color:var(--ink-mute);
+    margin-bottom:4px;
+    display:block;
+  }
+  .finding .lbl{color:#92400e}
+  .rec .lbl{color:#166534}
+  .finding p:last-child, .rec p:last-child{margin-bottom:0}
+
+  /* ─── Tablet mockup frame (S6 Lite, portrait) ──────────────── */
+  .tablet{
+    width:440px;
+    aspect-ratio: 600 / 1000;       /* tab S6 lite ~ 1200x2000 → 3:5 */
+    background:#15151a;
+    border-radius:28px;
+    padding:14px 9px;
+    box-shadow:
+      0 1px 0 rgba(255,255,255,0.06) inset,
+      0 0 0 1px #25252d,
+      0 30px 60px -30px rgba(0,0,0,0.35),
+      0 12px 24px -16px rgba(0,0,0,0.25);
+    position:relative;
+    margin:0 auto;
+  }
+  .tablet::before{
+    /* small front camera dot */
+    content:"";
+    position:absolute;
+    top:7px;
+    left:50%;
+    transform:translateX(-50%);
+    width:5px;
+    height:5px;
+    border-radius:50%;
+    background:#3a3a44;
+  }
+  .screen{
+    width:100%;
+    height:100%;
+    border-radius:16px;
+    overflow:hidden;
+    position:relative;
+    background:#ffffff;
+    isolation:isolate;
+  }
+  .mockup-caption{
+    text-align:center;
+    font-family:"JetBrains Mono",ui-monospace,monospace;
+    font-size:10px;
+    text-transform:uppercase;
+    letter-spacing:0.12em;
+    color:var(--ink-mute);
+    margin-top:14px;
+  }
+  .mockup-caption b{color:var(--ink);font-weight:500;letter-spacing:0.06em}
+
+  /* ─── Tablet inner: child font for mockups ─────────────────── */
+  .screen, .screen *{font-family:"Fredoka",sans-serif}
+  .screen .child{font-family:"Fredoka",sans-serif}
+
+  /* ─── Generic mockup helpers ───────────────────────────────── */
+  .row{display:flex;align-items:center;gap:8px}
+  .col{display:flex;flex-direction:column}
+
+  /* mockup header bar that appears on module screens */
+  .m-header{
+    position:absolute;left:0;right:0;top:0;
+    padding:14px 14px 0;
+    z-index:5;
+  }
+  .m-header-row{
+    background:rgba(255,255,255,0.92);
+    border-radius:14px;
+    padding:9px 10px;
+    display:flex;
+    align-items:center;
+    gap:8px;
+    box-shadow:0 4px 14px -8px rgba(0,0,0,0.25);
+  }
+  .m-back{
+    width:38px;height:38px;
+    border-radius:11px;
+    display:flex;align-items:center;justify-content:center;
+    background:rgba(0,0,0,0.06);
+    color:var(--ink);
+    font-size:15px;
+    font-weight:600;
+  }
+  .m-title{
+    flex:1;text-align:center;
+    font-weight:700;font-size:17px;
+    letter-spacing:-0.01em;
+  }
+  .m-mute{
+    width:38px;height:38px;border-radius:11px;
+    background:rgba(0,0,0,0.06);
+    display:flex;align-items:center;justify-content:center;
+    font-size:17px;
+  }
+
+  /* progress dots */
+  .dots{display:flex;gap:7px;flex:1;justify-content:center}
+  .dots i{
+    width:11px;height:11px;border-radius:50%;
+    background:rgba(0,0,0,0.12);
+    display:block;
+  }
+  .dots i.done{background:rgba(0,0,0,0.55)}
+  .dots i.now{transform:scale(1.4)}
+
+  /* big bottom CTA inside mockup */
+  .cta{
+    border-radius:18px;
+    padding:14px 16px;
+    font-weight:700;
+    font-size:18px;
+    color:#fff;
+    text-align:center;
+    box-shadow:0 8px 22px -10px rgba(0,0,0,0.3);
+    letter-spacing:-0.005em;
+  }
+
+  /* ── Closing prompt block ─────────────────────────────────── */
+  .prompt-block{
+    background:#0e1116;
+    color:#e6e9ef;
+    border-radius:14px;
+    padding:24px 26px;
+    font-family:"JetBrains Mono",ui-monospace,monospace;
+    font-size:12.5px;
+    line-height:1.7;
+    white-space:pre-wrap;
+    overflow:auto;
+    border:1px solid #1f2430;
+  }
+  .prompt-block .pcomment{color:#8c97a7}
+  .prompt-block .psection{color:#fbbf24;font-weight:500}
+  .prompt-block .pkey{color:#7dd3fc}
+
+  /* tiny utility */
+  .tag{
+    display:inline-flex;align-items:center;gap:5px;
+    font-family:"JetBrains Mono",ui-monospace,monospace;
+    font-size:10.5px;
+    text-transform:uppercase;
+    letter-spacing:0.1em;
+    border:1px solid var(--rule);
+    background:var(--paper);
+    border-radius:999px;
+    padding:3px 9px;
+    color:var(--ink-soft);
+    margin-right:4px;
+  }
+  .tag::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--ink-mute)}
+  .tag.yel::before{background:var(--yel)}
+  .tag.blu::before{background:var(--blu)}
+  .tag.pur::before{background:var(--pur)}
+  .tag.grn::before{background:var(--grn)}
+
+  hr{border:none;border-top:1px solid var(--rule);margin:48px 0}
+
+  .footer{
+    margin-top:96px;
+    padding-top:24px;
+    border-top:1px solid var(--ink);
+    color:var(--ink-mute);
+    font-family:"JetBrains Mono",ui-monospace,monospace;
+    font-size:11px;
+    text-transform:uppercase;
+    letter-spacing:0.12em;
+    display:flex;justify-content:space-between;
+  }
+</style>
+</head>
+<body>
+
+<div class="page">
+
+<!-- ═════════════════════ HEADER ═════════════════════ -->
+<header class="doc-head">
+  <div>
+    <div class="kicker">Belső dokumentum · Claude Code átadáshoz</div>
+    <h1>pankaLearn — redesign terv <em>v1</em></h1>
+  </div>
+  <p class="lede">
+    Vizuális finomítás Panka (5 éves) tanulóappjára Samsung Galaxy Tab S6 Lite-ra,
+    <strong>álló tájolásban</strong>. Cél: rendezettebb, kisgyerek számára olvashatóbb,
+    fókuszáltabb elrendezés — a <strong>jelenlegi színpaletta megtartásával</strong>.
+    A meglévő pedagógia és gamifikáció (kert-metafora, kabala, ruhatár, jutalmazási rétegek) változatlan.
+  </p>
+  <div class="meta">
+    <span><b>Eszköz</b> Galaxy Tab S6 Lite · ~10,4″ · 1200×2000 portrait</span>
+    <span><b>Stack</b> React + TS + Tailwind + Framer Motion</span>
+    <span><b>Hatáskör</b> layout, hierarchia, komponens-vokabulárium, méretek</span>
+    <span><b>Nem érinti</b> színek, modul-logika, hangok, jutalmazás</span>
+  </div>
+</header>
+
+<!-- ═════════════════════ TOC ═════════════════════ -->
+<nav class="toc" aria-label="Tartalom">
+  <a href="#diagnozis"><span class="num">01</span><span>Diagnózis</span></a>
+  <a href="#elvek"><span class="num">02</span><span>Vezérelvek</span></a>
+  <a href="#system"><span class="num">03</span><span>Design rendszer</span></a>
+  <a href="#kert"><span class="num">04</span><span>Kert (főképernyő)</span></a>
+  <a href="#valaszto"><span class="num">05</span><span>Modul-választó</span></a>
+  <a href="#feladat"><span class="num">06</span><span>Feladat-képernyő</span></a>
+  <a href="#jutalom"><span class="num">07</span><span>Round-end</span></a>
+  <a href="#ruhatar"><span class="num">08</span><span>Ruhatár</span></a>
+  <a href="#kabala"><span class="num">09</span><span>Kabala-választó</span></a>
+  <a href="#szuloi"><span class="num">10</span><span>Szülői zár</span></a>
+  <a href="#prompt"><span class="num">11</span><span>Claude Code prompt</span></a>
+  <a href="#kivul"><span class="num">12</span><span>Kívülálló javaslatok</span></a>
+</nav>
+
+<!-- ═════════════════════ 01 · DIAGNÓZIS ═════════════════════ -->
+<section id="diagnozis">
+  <div class="sec-head">
+    <div class="sec-num">01</div>
+    <h2>Diagnózis<span class="sub">Mit látunk most, designer szemmel — a „szétszórtság" konkrétan</span></h2>
+  </div>
+
+  <p>
+    Az app pedagógiailag jól felépített, a színkódolás (sárga/kék/lila/zöld) erős és intuitív.
+    A „szétszórtság" érzése <strong>nem a színekből</strong>, hanem négy konkrét layout-mintából fakad,
+    amelyeket az alábbiakban szedek szét. Egyikre sem kell drasztikus átalakítás —
+    elég egy közös, ismétlődő váz, és a UI csendesebbé válik.
+  </p>
+
+  <h3>1. A főképernyő (Kert) négy sarka azonos súlyú, nincs központ</h3>
+  <div class="finding">
+    <span class="lbl">Probléma</span>
+    <p>
+      A négy modul-gomb a viewport <strong>négy sarkában</strong> ül (Matek bal-felül, Olvasás
+      jobb-felül, Írás bal-alul, Angol jobb-alul), és mind ugyanúgy néz ki:
+      <code>emoji + cím + bg-color + border-4</code>. A fa középen,
+      a 4 virágágyás külön sorban, a Panka avatár jobb oldalt „lebeg", a szekrény gomb,
+      a hangerő, a kabala-mini és a szülői zár <strong>nyolc különálló kis floating elem</strong>
+      tölti ki a tablet képernyőjét. Egyik sem hangsúlyosabb a másiknál → 5 évesnek nincs
+      ahova „letennie" a tekintetét először.
+    </p>
+  </div>
+
+  <h3>2. A modul-választó és a Garden-modul-gomb ugyanazt a vizuális szókincset használja</h3>
+  <div class="finding">
+    <span class="lbl">Probléma</span>
+    <p>
+      A Garden „Matek" gomb és a MathModule belső „Számolj! / Villám!" választó kártyák
+      <strong>vizuálisan ugyanazt csinálják</strong>: emoji-fej + cím + alcím + színes bg.
+      A felhasználó nem érzi, hogy belépett <em>valahova</em>. Ez nem ad „belépés"
+      érzést — minden tap után ugyanaz a típusú felület jön.
+    </p>
+  </div>
+
+  <h3>3. A feladat-képernyőkön (game phase) szétesik a fókusz</h3>
+  <div class="finding">
+    <span class="lbl">Probléma</span>
+    <p>
+      Egy számolós matek-képernyőn egyszerre van jelen: a fejléc fehér doboza
+      (Vissza + 5 progress-dot + kabala-mini), a kérdés (fehér drop-shadow szöveg sárga
+      gradient háttéren — <strong>alacsony kontraszt</strong>), a véletlenszerűen szétszórt
+      tárgyak, és a 2×2 grid négy szám-gombja. A „kabala-mini" a fejlécben <em>nem
+      kattintható</em> és semmi funkciója nincs, csak vizuális zaj. A számolós feladat
+      tárgyai random pozíciókban szóródnak → 5 évesnek nehéz vizuálisan végigvonni
+      a sort, mert <em>nincs számolási struktúra</em>.
+    </p>
+  </div>
+
+  <h3>4. Túl sok mikro-stílus dönt vizuális zajt</h3>
+  <div class="finding">
+    <span class="lbl">Probléma</span>
+    <p>
+      A kódbázisban szinte minden gombon van <code>shadow-xl/2xl</code> + <code>border-4</code>
+      + <code>rounded-3xl</code> + <code>active:scale-95</code> + <code>drop-shadow</code> +
+      <code>gradient</code>. Egyenként mind jó döntés, együtt <strong>vizuálisan tömött</strong>:
+      mindennek hangsúlya van, tehát semminek nincs. Háromféle border-radius
+      keveredik (<code>rounded-xl</code>, <code>2xl</code>, <code>3xl</code>), két font-súly
+      váltakozik (<code>font-bold</code> és <code>font-black</code>) céltalanul,
+      a fejléc-pattern két helyen különböző (fehér doboz vs. transparent + drop-shadow szöveg).
+    </p>
+  </div>
+
+  <h3>5. A round-end képernyő egyszerre akar túl sokat ünnepelni</h3>
+  <div class="finding">
+    <span class="lbl">Probléma</span>
+    <p>
+      4 csillag pop-anim, 1 óriási center-emoji <code>star-pop</code> filterrel,
+      kétsoros dicsérő szöveg, kabala bounce-anim, két nagy gomb — <strong>6+ animált
+      elem párhuzamosan</strong>. Egy 5 éves dopamin-rendszerét lefoglalja, de pont a
+      lényeges visszacsatolás vész el: <em>„most kaptam egy új virágot/ruhát"</em>.
+      A spec maga is azt mondja: a jutalom <em>a kert változásában</em> van — ezt a képernyő
+      most nem mutatja meg.
+    </p>
+  </div>
+</section>
+
+<!-- ═════════════════════ 02 · VEZÉRELVEK ═════════════════════ -->
+<section id="elvek">
+  <div class="sec-head">
+    <div class="sec-num">02</div>
+    <h2>Vezérelvek<span class="sub">Hat tervezési szabály, ami minden képernyőn megismétlődik</span></h2>
+  </div>
+
+  <ol>
+    <li>
+      <strong>Egy képernyő — egy fókusz.</strong> Minden képernyőnek pontosan
+      <em>egy</em> nagy, középen lévő tárgya van (a kérdés, a betű, a kabala, a fa).
+      A többi elem ezt szolgálja, és mérete <em>nem versenyez</em> vele.
+    </li>
+    <li>
+      <strong>Egy közös fejléc-pattern.</strong> Minden modul-képernyő ugyanazt a
+      fejléc-vázát hordozza: bal oldalt egy kerek „Vissza a kertbe" gomb (fa-ikonnal),
+      középen a progress / cím, jobb oldalt egy „Mondd újra" hang-gomb.
+      Nincs mascot-mini a fejlécben (a kabala a feladat <em>tartalmában</em> jelenik meg,
+      vagy egyáltalán nem). Sehol nincs fehér panel a fejlécben — a fejléc <em>magán a háttéren</em> ül.
+    </li>
+    <li>
+      <strong>Egy primary CTA pattern.</strong> Minden modul-szín saját <em>egy</em>
+      primary gombbal: <code>full-width</code>, magasság ≥ 84px, <code>border-radius: 22px</code>,
+      <code>font-weight: 700</code>, fehér szöveg, <em>egy</em> diszkrét shadow. Nincs
+      <code>border-4</code>, nincs gradient a gombokon — csak tömör szín.
+    </li>
+    <li>
+      <strong>Ritmus a hierarchiában.</strong> A Garden a fő, „nyitott" tér →
+      tág, levegős, központi fa, kerek modul-állomások körben. A modul-szelektor
+      „belépő" felület → szín-kitöltés + két <em>játék</em>-kártya. A feladat
+      „munkafelület" → fehér tartalom-card a színes háttéren. Ez a három
+      réteg vizuálisan elkülönül.
+    </li>
+    <li>
+      <strong>A kert él, és a jutalom <em>ott</em> történik.</strong> A round-end
+      képernyő nem egy generikus „⭐⭐⭐ ügyes voltál" oldal, hanem egy
+      <em>visszatérés a kertbe</em>, ahol az új virág / új ruha kibomlik animációval,
+      a kabala onnan dicsér. Ezáltal a jutalom mindig <em>kontextusban</em> van.
+    </li>
+    <li>
+      <strong>Csendesebb vizuális anyag.</strong> Egy radius (22px), egy shadow-tier,
+      egy font (Fredoka 500/600/700), kettő fontméret-skála (gyerek-content vs.
+      mikro-szöveg). Az emojik és a kabala-illusztráció maradnak <em>az</em>
+      vizuális zaj forrása — mert ezek a tartalom.
+    </li>
+  </ol>
+</section>
+
+<!-- ═════════════════════ 03 · DESIGN RENDSZER ═════════════════════ -->
+<section id="system">
+  <div class="sec-head">
+    <div class="sec-num">03</div>
+    <h2>Design rendszer<span class="sub">Konkrét tokenek és komponens-méretek (Tailwind-kompatibilis)</span></h2>
+  </div>
+
+  <div class="split flip">
+    <div>
+      <h3>Színek (változatlan)</h3>
+      <p>
+        Modulonkénti hue marad. Minden modul-screen háttér <em>tömör</em> szín (nem
+        gradient), a felső sky-régió <em>egyetlen</em> tonális elem (világosabb verzió).
+        Lent a fűhöz tartozó zöld is megmarad.
+      </p>
+      <p style="display:flex;flex-wrap:wrap;gap:6px;margin-top:14px">
+        <span class="tag yel">Matek · #fbbf24</span>
+        <span class="tag blu">Olvasás · #3b82f6</span>
+        <span class="tag pur">Írás · #8b5cf6</span>
+        <span class="tag grn">Angol · #22c55e</span>
+      </p>
+
+      <h3>Tipográfia</h3>
+      <ul>
+        <li><strong>Egy család:</strong> <code>Fredoka</code> (kerek, gyerekbarát, magas X-magasság, kiváló olvashatóság alacsony betűismeret mellett is).</li>
+        <li><strong>Skála (S6 Lite portrait, 1200×2000):</strong>
+          <ul>
+            <li><code>display</code> — 56 px / 700 → modul-szelektor cím</li>
+            <li><code>title</code> — 36 px / 700 → kérdés (pl. „Hány macska?")</li>
+            <li><code>action</code> — 28 px / 700 → primary CTA gomb</li>
+            <li><code>label</code> — 22 px / 600 → tab-label, kis cím</li>
+            <li><code>helper</code> — 16 px / 500 → másodlagos info</li>
+          </ul>
+        </li>
+        <li><strong>Két súly elég:</strong> 600 (label) és 700 (action / title). <em>Nincs</em> <code>font-black</code>.</li>
+      </ul>
+
+      <h3>Spacing, radius, árnyék</h3>
+      <ul>
+        <li><strong>Radius:</strong> egyetlen érték — <code>22px</code> kártyához és gombhoz, <code>16px</code> kis pille-elemekhez, <code>50%</code> kerek ikonokhoz.</li>
+        <li><strong>Spacing skála:</strong> <code>4 · 8 · 12 · 20 · 32 · 56 px</code>. A 6-os, 10-es stb. átmeneti értékek elhagyhatók.</li>
+        <li><strong>Shadow:</strong> egyetlen tier — <code>0 12px 24px -12px rgba(0,0,0,.25)</code>. <em>Nincs</em> <code>shadow-2xl</code>, <em>nincs</em> dupla árnyék.</li>
+        <li><strong>Border:</strong> a <code>border-4</code> mintázat törlendő. Helyette <em>fehér 1px inner ring</em> (<code>shadow-[inset_0_0_0_1px_rgba(255,255,255,.6)]</code>) a sötét gombokon. Más esetben nincs border.</li>
+      </ul>
+
+      <h3>Érintési zónák</h3>
+      <ul>
+        <li>Primary tap-target: <strong>min. 96 × 96 px</strong> (a spec 80-at ír — emeljük, 5 éves ujj is bőven elférjen).</li>
+        <li>Mikro-ikonok (vissza, hang): <strong>56 × 56 px</strong>.</li>
+        <li>Szám/válasz-kártyák: <strong>min. 132 × 132 px</strong>, közöttük <strong>16 px</strong> gap.</li>
+      </ul>
+
+      <h3>Komponens-vokabulárium</h3>
+      <ul>
+        <li><strong>Modul-állomás</strong> (Garden-en, lent a fűben): <em>ház-sziluett</em> mascot-emoji-val a tetején, alatta szín-szalag a modul-névvel. Nem doboz — <em>kép</em>.</li>
+        <li><strong>Játék-kártya</strong> (modul-szelektoron, 2 db): fehér kártya, nagy emoji + cím + 1 soros leírás. Tömör fehér háttér (nem áttetsző), egyetlen árnyék.</li>
+        <li><strong>Válasz-kártya</strong> (feladatokon): tömör szín-háttér (modul-hue), fehér szöveg, kerekített, nincs border. Helyes állapot: zöld inner-ring + ✓ overlay. Hibás: piros inner-ring + shake.</li>
+        <li><strong>Header-strip</strong>: a háttér tetején <em>magán a háttéren</em>, nincs doboz. Bal: Vissza (kerek 56). Közép: progress vagy cím. Jobb: Hang (kerek 56). <em>Nincs</em> kabala-mini.</li>
+      </ul>
+    </div>
+
+    <div>
+      <div style="position:sticky;top:32px">
+        <!-- Mini style sheet card -->
+        <div style="border:1px solid var(--rule);border-radius:14px;background:var(--paper);padding:18px;font-family:'JetBrains Mono',monospace;font-size:11px;line-height:1.7;color:var(--ink-soft)">
+          <div style="font-family:'DM Sans',sans-serif;font-weight:600;font-size:13px;color:var(--ink);margin-bottom:10px;letter-spacing:-0.01em">Tokenek (futtatható összegzés)</div>
+          <div style="color:#0a7c2a;margin-bottom:4px">/* radius */</div>
+          <div>--r-card: 22px;</div>
+          <div>--r-pill: 16px;</div>
+          <div>--r-round: 9999px;</div>
+          <div style="color:#0a7c2a;margin:10px 0 4px">/* spacing */</div>
+          <div>--sp-1: 4px;  --sp-2: 8px;</div>
+          <div>--sp-3: 12px; --sp-4: 20px;</div>
+          <div>--sp-5: 32px; --sp-6: 56px;</div>
+          <div style="color:#0a7c2a;margin:10px 0 4px">/* shadow */</div>
+          <div>--sh-1: 0 12px 24px -12px</div>
+          <div>&nbsp;&nbsp;rgba(0,0,0,.25);</div>
+          <div style="color:#0a7c2a;margin:10px 0 4px">/* type */</div>
+          <div>display 56/700</div>
+          <div>title&nbsp;&nbsp;&nbsp;36/700</div>
+          <div>action&nbsp;&nbsp;28/700</div>
+          <div>label&nbsp;&nbsp;&nbsp;22/600</div>
+          <div>helper&nbsp;&nbsp;16/500</div>
+          <div style="color:#0a7c2a;margin:10px 0 4px">/* hit targets */</div>
+          <div>primary: 96×96 min</div>
+          <div>answer:&nbsp; 132×132</div>
+          <div>icon:&nbsp;&nbsp;&nbsp; 56×56</div>
+        </div>
+
+        <div style="border:1px solid var(--rule);border-radius:14px;background:var(--paper);padding:18px;margin-top:16px;font-size:13px">
+          <div style="font-weight:600;color:var(--ink);margin-bottom:6px;font-family:'DM Sans',sans-serif">A „mit hagyunk el" lista</div>
+          <ul style="margin:0;padding-left:18px;color:var(--ink-soft);font-size:13px">
+            <li>Gradient gombokon (csak nagy felületeken — pl. ég)</li>
+            <li><code>border-4</code> mindenhol</li>
+            <li><code>shadow-2xl</code> és dupla árnyék</li>
+            <li><code>font-black</code> (csak 700 marad)</li>
+            <li>Kabala-mini a feladat-fejlécben</li>
+            <li>4 darab külön csillag-pop animáció round-end-en</li>
+            <li>Fehér drop-shadow szöveg színes háttéren — váltja: szöveg <em>fehér panelban</em> vagy magas-kontraszt sötét szöveg</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═════════════════════ 04 · KERT ═════════════════════ -->
+<section id="kert">
+  <div class="sec-head">
+    <div class="sec-num">04</div>
+    <h2>Kert · főképernyő<span class="sub">Garden.tsx — a négy sarok helyett egy közös horizont és négy „állomás-ház"</span></h2>
+  </div>
+
+  <div class="split">
+    <div>
+      <div class="finding">
+        <span class="lbl">Mit látunk most</span>
+        <p>
+          Négy modul-gomb a négy sarokban, azonos súllyal. A fa középen, a virágágyások
+          a fa alatt szétszórva (left: 5%, 21%, 42%, 55% — nem szimmetrikus, nem világos
+          melyik bed melyik modulhoz tartozik). Panka avatár jobb oldalon „lóg", mellette
+          szekrény-ikon, alatta kabala-mini. Szülői zár közepén egy fél-átlátszó fogaskerék.
+        </p>
+      </div>
+
+      <div class="rec">
+        <span class="lbl">Mit javasolok</span>
+        <p>
+          A főképernyő legyen egy <strong>klasszikus, vízszintes kerti panoráma</strong>:
+          felül ég (kabala-vendégek itt repkednek), középen a fa, lent egy
+          <strong>egységes „falu-sor": 4 modul-ház, balról jobbra</strong>, fölöttük
+          közvetlenül a saját virágágyásukkal. Panka és a szekrény jobb alsó sarokban,
+          „Panka kuckójaként". Hangerő bal felül. Szülői zár ne legyen ikon
+          a képernyőn — váljon a kerthez <em>hosszú-nyomásos</em> rejtett kapuvá
+          (pl. a fa törzsén 3 mp).
+        </p>
+      </div>
+
+      <h4>Konkrét layout — fentről lefelé</h4>
+      <ul>
+        <li><strong>1. Ég (felső 38%)</strong> — egyetlen, finom kék gradient
+        (sky-300 → sky-100), 2-3 felhő. A felhők <em>lassan</em> mozognak (60-80 mp loop).
+        A felhők között kb. 5-7 percenként egy pillangó/méhecske átszáll —
+        ez az „él a kert" érzés, túlhajtás nélkül.</li>
+        <li><strong>2. Fa (vízszintesen középen, függőlegesen az ég-fű határnál)</strong> —
+        kb. <code>w: 280px</code>, ott áll, ahol az ég és a fű találkozik. Az alá
+        kerülő házak <em>nem takarják el</em>. Egyetlen, statikus elem — kattintásra <em>nem
+        reagál</em> (a fa szimbolikus, nem nav target).</li>
+        <li><strong>3. Virágágyás-sor</strong> (a fű felső 15%-án) — négy
+        <em>egyforma méretű</em> sáv, balról jobbra: <span class="tag yel">tulipán</span>
+        <span class="tag blu">napraforgó</span>
+        <span class="tag pur">rózsa</span>
+        <span class="tag grn">pipacs</span>.
+        Mindegyik sávban 8 hely (a jelenlegi mechanika), de <em>szabályos, fix
+        rácsban</em> (pl. 4×2 mini-pozíció). A bed alja összeér a hozzá tartozó ház
+        tetejével — látható, hogy „onnan nő".</li>
+        <li><strong>4. Modul-házak (a fű alsó 60%-án)</strong> — négy ház egy sorban,
+        modul-színnel: nyeregtető (sötétebb hue), homlokzat (alap hue, <em>tömör</em>),
+        közepén <em>egyetlen</em> emoji ikon nagyban (<code>72px</code>), alatta a
+        modul neve fehéren (Fredoka 600 / 22px). A ház alja összeér a fűvel — egész
+        elem clickable. <strong>Méret: 86×118 px házanként</strong> (a Tab S6 Lite 1200px
+        wide-on bőven elférnek 4 db + 24px gap-ekkel).</li>
+        <li><strong>5. Panka kuckója (jobb alsó sarok)</strong> — Panka avatár áll
+        (kb. 110×220 px), mellette egy <em>kis ház-ikon</em> (62×62) a szekrényhez,
+        rajta apró 👗 emoji. Ez a kuckó egy <em>vízszintesen különvált</em> blokk,
+        nem szól bele a 4-ház sorba.</li>
+        <li><strong>6. Hangerő gomb</strong> — bal felül, 56×56, kerek, fehér 80% bg.
+        Mellette opcionálisan a napi-cél progress-pötty (4 kis virág-emoji,
+        amennyit ma teljesített). Ez <strong>új</strong>: tudatosítja, hogy „még
+        mennyi van vissza ma".</li>
+        <li><strong>7. Szülői zár</strong> — <em>nincs</em> látható ikon. A nyitás:
+        a fa törzsére hosszú-nyomás 3 mp. Ez nem dokumentált a UI-on, a felnőtt tudni
+        fogja, a gyerek nem találja meg. Megőrzi a kert teljes tisztaságát.</li>
+      </ul>
+
+      <h4>Mikro-interakciók</h4>
+      <ul>
+        <li>Ház koppintáskor: az adott ház megemelkedik 6 px-szel + halvány fény + 80 ms.
+        Más házak <em>nem</em> halványulnak.</li>
+        <li>Új virág megnyílásakor (round-end-ből visszatérés után): a megfelelő bed
+        sávjában <em>az új virág</em> bloom anim (a meglévő <code>flower-bloom</code> keyframe),
+        a többi virág nem reagál. A bed enyhe „pulse" 1× (modul-hue glow).</li>
+      </ul>
+    </div>
+
+    <!-- ─── MOCKUP: GARDEN ─── -->
+    <div>
+      <div class="tablet">
+        <div class="screen" style="background:linear-gradient(to bottom,#bae6fd 0%,#e0f2fe 38%,#86efac 38%,#22c55e 100%)">
+          <!-- felhők -->
+          <svg viewBox="0 0 140 50" style="position:absolute;top:6%;left:10%;width:90px;opacity:.92"><ellipse cx="40" cy="34" rx="32" ry="16" fill="#fff"/><ellipse cx="70" cy="30" rx="30" ry="18" fill="#fff"/><ellipse cx="100" cy="34" rx="26" ry="14" fill="#fff"/></svg>
+          <svg viewBox="0 0 140 50" style="position:absolute;top:10%;right:8%;width:74px;opacity:.85"><ellipse cx="40" cy="34" rx="32" ry="16" fill="#fff"/><ellipse cx="70" cy="30" rx="30" ry="18" fill="#fff"/><ellipse cx="100" cy="34" rx="26" ry="14" fill="#fff"/></svg>
+
+          <!-- hangerő + napi cél -->
+          <div style="position:absolute;top:14px;left:14px;display:flex;gap:8px;align-items:center">
+            <div style="width:42px;height:42px;border-radius:50%;background:rgba(255,255,255,0.85);display:flex;align-items:center;justify-content:center;font-size:18px;box-shadow:0 4px 10px -6px rgba(0,0,0,.2)">🔊</div>
+            <div style="background:rgba(255,255,255,0.7);border-radius:999px;padding:6px 10px;font-size:13px;font-weight:600;color:#1e3a8a;display:flex;gap:3px;align-items:center">
+              <span>🌷</span><span>🌻</span><span>·</span><span style="opacity:.35">·</span>
+            </div>
+          </div>
+
+          <!-- repkedő vendégek -->
+          <span style="position:absolute;top:18%;left:55%;font-size:18px">🦋</span>
+          <span style="position:absolute;top:24%;left:78%;font-size:14px">🐝</span>
+
+          <!-- FA középen, az ég-fű határon ülve -->
+          <div style="position:absolute;left:50%;bottom:62%;transform:translateX(-50%);width:140px;text-align:center">
+            <svg viewBox="0 0 200 240" style="width:140px"><path d="M88 232 Q84 200 92 158" stroke="#78350f" stroke-width="22" fill="none" stroke-linecap="round"/><path d="M108 232 Q112 200 104 158" stroke="#78350f" stroke-width="22" fill="none" stroke-linecap="round"/><ellipse cx="98" cy="100" rx="80" ry="84" fill="#15803d"/><ellipse cx="80" cy="80" rx="56" ry="60" fill="#16a34a"/><ellipse cx="118" cy="86" rx="54" ry="58" fill="#22c55e"/><ellipse cx="98" cy="58" rx="48" ry="50" fill="#4ade80"/></svg>
+          </div>
+
+          <!-- 4 virágágyás sor -->
+          <div style="position:absolute;left:14px;right:14px;top:60%;height:32px;display:grid;grid-template-columns:repeat(4,1fr);gap:6px">
+            <div style="display:flex;flex-wrap:wrap;gap:1px;justify-content:center;align-items:flex-end;font-size:13px">🌷🌷🌷🌷</div>
+            <div style="display:flex;flex-wrap:wrap;gap:1px;justify-content:center;align-items:flex-end;font-size:13px">🌻🌻🌻</div>
+            <div style="display:flex;flex-wrap:wrap;gap:1px;justify-content:center;align-items:flex-end;font-size:13px">🌹🌹</div>
+            <div style="display:flex;flex-wrap:wrap;gap:1px;justify-content:center;align-items:flex-end;font-size:13px">🌺🌺🌺🌺🌺</div>
+          </div>
+
+          <!-- 4 modul-ház -->
+          <div style="position:absolute;left:14px;right:120px;bottom:18px;display:grid;grid-template-columns:repeat(4,1fr);gap:10px">
+            <!-- matek -->
+            <div style="position:relative;height:106px;border-radius:6px 6px 14px 14px;background:linear-gradient(to bottom,#fbbf24 38%,#f59e0b 100%);box-shadow:0 8px 18px -10px rgba(0,0,0,.35);display:flex;flex-direction:column;align-items:center;justify-content:flex-end;padding:6px 4px 8px">
+              <div style="position:absolute;top:-14px;left:50%;transform:translateX(-50%);width:0;height:0;border-left:38px solid transparent;border-right:38px solid transparent;border-bottom:18px solid #d97706"></div>
+              <span style="font-size:30px;line-height:1;margin-bottom:4px">🔢</span>
+              <span style="font-size:12px;font-weight:600;color:#78350f">Matek</span>
+            </div>
+            <!-- olvasás -->
+            <div style="position:relative;height:106px;border-radius:6px 6px 14px 14px;background:linear-gradient(to bottom,#3b82f6 38%,#1d4ed8 100%);box-shadow:0 8px 18px -10px rgba(0,0,0,.35);display:flex;flex-direction:column;align-items:center;justify-content:flex-end;padding:6px 4px 8px">
+              <div style="position:absolute;top:-14px;left:50%;transform:translateX(-50%);width:0;height:0;border-left:38px solid transparent;border-right:38px solid transparent;border-bottom:18px solid #1e40af"></div>
+              <span style="font-size:30px;line-height:1;margin-bottom:4px">📚</span>
+              <span style="font-size:12px;font-weight:600;color:#fff">Olvasás</span>
+            </div>
+            <!-- írás -->
+            <div style="position:relative;height:106px;border-radius:6px 6px 14px 14px;background:linear-gradient(to bottom,#8b5cf6 38%,#6d28d9 100%);box-shadow:0 8px 18px -10px rgba(0,0,0,.35);display:flex;flex-direction:column;align-items:center;justify-content:flex-end;padding:6px 4px 8px">
+              <div style="position:absolute;top:-14px;left:50%;transform:translateX(-50%);width:0;height:0;border-left:38px solid transparent;border-right:38px solid transparent;border-bottom:18px solid #5b21b6"></div>
+              <span style="font-size:30px;line-height:1;margin-bottom:4px">✏️</span>
+              <span style="font-size:12px;font-weight:600;color:#fff">Írás</span>
+            </div>
+            <!-- angol -->
+            <div style="position:relative;height:106px;border-radius:6px 6px 14px 14px;background:linear-gradient(to bottom,#22c55e 38%,#15803d 100%);box-shadow:0 8px 18px -10px rgba(0,0,0,.35);display:flex;flex-direction:column;align-items:center;justify-content:flex-end;padding:6px 4px 8px">
+              <div style="position:absolute;top:-14px;left:50%;transform:translateX(-50%);width:0;height:0;border-left:38px solid transparent;border-right:38px solid transparent;border-bottom:18px solid #166534"></div>
+              <span style="font-size:30px;line-height:1;margin-bottom:4px">✈️</span>
+              <span style="font-size:12px;font-weight:600;color:#fff">Angol</span>
+            </div>
+          </div>
+
+          <!-- Panka kucko: avatar + szekrény -->
+          <div style="position:absolute;right:14px;bottom:18px;display:flex;align-items:flex-end;gap:6px">
+            <!-- mini avatar -->
+            <div style="width:48px;height:104px;display:flex;flex-direction:column;align-items:center">
+              <div style="width:28px;height:28px;border-radius:50%;background:#fcd5b5;position:relative">
+                <span style="position:absolute;top:-4px;left:50%;transform:translateX(-50%);font-size:11px">🎀</span>
+                <span style="position:absolute;top:-12px;left:50%;transform:translateX(-50%);width:30px;height:14px;background:#8b5e3c;border-radius:50% 50% 30% 30%"></span>
+              </div>
+              <div style="width:34px;height:42px;background:#f472b6;border-radius:8px 8px 14px 14px;margin-top:-3px"></div>
+              <div style="width:30px;height:30px;background:#f9a8d4;border-radius:50% 50% 6px 6px;margin-top:-2px"></div>
+            </div>
+            <!-- szekreny -->
+            <div style="width:54px;height:74px;border-radius:8px 8px 12px 12px;background:linear-gradient(to bottom,#a78bfa,#7c3aed);display:flex;align-items:center;justify-content:center;font-size:22px;box-shadow:0 6px 14px -8px rgba(0,0,0,.3)">👗</div>
+          </div>
+
+        </div>
+      </div>
+      <div class="mockup-caption"><b>04A</b> · Garden — vízszintes panoráma, 4 ház + 4 ágyás</div>
+    </div>
+  </div>
+</section>
+
+<!-- ═════════════════════ 05 · MODUL-VÁLASZTÓ ═════════════════════ -->
+<section id="valaszto">
+  <div class="sec-head">
+    <div class="sec-num">05</div>
+    <h2>Modul-választó<span class="sub">Math/Reading/Writing/English `select` phase — a „belépés a házba" érzet</span></h2>
+  </div>
+
+  <div class="split flip">
+    <!-- ─── MOCKUP: SELECT ─── -->
+    <div>
+      <div class="tablet">
+        <div class="screen" style="background:#fbbf24">
+          <!-- háttér: tömör sárga, lent halvány „padló" -->
+          <div style="position:absolute;left:0;right:0;bottom:0;height:40%;background:linear-gradient(to bottom,rgba(255,255,255,0) 0%,rgba(255,255,255,0.18) 100%)"></div>
+
+          <!-- header strip, ON background, no white box -->
+          <div style="position:absolute;top:14px;left:14px;right:14px;display:flex;align-items:center;gap:10px">
+            <div style="width:42px;height:42px;border-radius:50%;background:rgba(255,255,255,0.85);display:flex;align-items:center;justify-content:center;font-size:18px">🌳</div>
+            <div style="flex:1;text-align:center;font-size:20px;font-weight:700;color:#78350f">🔢 Matek</div>
+            <div style="width:42px;height:42px;border-radius:50%;background:rgba(255,255,255,0.85);display:flex;align-items:center;justify-content:center;font-size:16px">🔊</div>
+          </div>
+
+          <!-- kabala — egyszerű kör placeholder + cica fej -->
+          <div style="position:absolute;top:90px;left:50%;transform:translateX(-50%);width:96px;height:96px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;font-size:54px;box-shadow:0 12px 24px -12px rgba(0,0,0,.3)">🐱</div>
+          <div style="position:absolute;top:200px;left:50%;transform:translateX(-50%);width:80%;text-align:center;font-size:18px;font-weight:700;color:#78350f;line-height:1.3">
+            Melyik játékot<br/>választod?
+          </div>
+
+          <!-- 2 játék-kártya — fehér tömör bg, NEM border-4 -->
+          <div style="position:absolute;left:14px;right:14px;top:282px;display:grid;grid-template-columns:1fr 1fr;gap:12px">
+            <div style="background:#fff;border-radius:20px;padding:18px 10px;text-align:center;box-shadow:0 10px 22px -12px rgba(0,0,0,.25)">
+              <div style="font-size:46px;line-height:1;margin-bottom:6px">🐱</div>
+              <div style="font-size:16px;font-weight:700;color:#78350f">Számolj!</div>
+              <div style="font-size:11px;font-weight:500;color:#92400e;opacity:.75;margin-top:2px">Számold meg<br/>a képeket!</div>
+            </div>
+            <div style="background:#fff;border-radius:20px;padding:18px 10px;text-align:center;box-shadow:0 10px 22px -12px rgba(0,0,0,.25)">
+              <div style="font-size:46px;line-height:1;margin-bottom:6px">⚡</div>
+              <div style="font-size:16px;font-weight:700;color:#166534">Villám!</div>
+              <div style="font-size:11px;font-weight:500;color:#166534;opacity:.75;margin-top:2px">Nézd a pöttyöket<br/>villámgyorsan!</div>
+            </div>
+          </div>
+
+          <!-- napi kis progress -->
+          <div style="position:absolute;left:50%;bottom:22px;transform:translateX(-50%);background:rgba(255,255,255,0.4);border-radius:999px;padding:6px 14px;font-size:12px;font-weight:600;color:#78350f">Ma · 2 / 4 kör</div>
+        </div>
+      </div>
+      <div class="mockup-caption"><b>05A</b> · Modul-választó — Matek (kék/lila/zöld azonos szerkezet)</div>
+    </div>
+
+    <div>
+      <div class="finding">
+        <span class="lbl">Mit látunk most</span>
+        <p>
+          Fehér panel-fejléc <em>belül</em> a színes háttéren („← Kert" + cím), majd kabala
+          és két border-4 kártya. A két kártya majdnem ugyanúgy néz ki, mint a Garden modul-gombjai
+          (azonos vizuális szókincs). A „← Kert" gomb kis és szöveges, kerek ikon helyett.
+        </p>
+      </div>
+
+      <div class="rec">
+        <span class="lbl">Mit javasolok</span>
+        <p>
+          A választó képernyő legyen <em>kifejezetten más típusú felület</em>, mint a Garden:
+          fejléc <em>nincs panelban</em>, közvetlen a hue-háttéren ül. A „vissza" gomb
+          ne szöveges („← Kert"), hanem <strong>egy kerek fa-ikon</strong> (🌳, 56×56) —
+          gyerek ránézésre tudja: „ott a kert, oda megyek". A kabala kerek mascot-bélyegben
+          jelenik meg. A 2 játék-kártya <strong>fehér, tömör, áttetszettség nélkül</strong>:
+          ez kontraszt-felület a színes ég ellen → letisztult fókusz.
+        </p>
+      </div>
+
+      <h4>Konkrét layout</h4>
+      <ul>
+        <li><strong>Háttér:</strong> tömör modul-hue (nem gradient). Lent halvány,
+        <em>egyirányú</em> világosodás (~18% opacity white) — ad mélységet úgy, hogy
+        nem versenyez tartalommal.</li>
+        <li><strong>Header strip</strong> (a háttéren, doboz nélkül): bal — 🌳 56×56
+        kerek, fehér 85% bg; közép — <code>"🔢 Matek"</code> 22 px / 700, modul-ink-szín
+        (sárga modulnál: #78350f = yellow-900); jobb — 🔊 56×56 kerek.</li>
+        <li><strong>Mascot bélyeg</strong> — 120×120, kerek, fehér tömör bg, az emoji
+        a modul-illusztrációval. Vízszintesen középen, fejlécre ~24 px gap.</li>
+        <li><strong>Kérdés</strong> — <code>"Melyik játékot választod?"</code> Fredoka 700 /
+        24 px, modul-ink-szín, középre, 2 sor.</li>
+        <li><strong>Játék-kártyák</strong> (2 db) — <em>fehér</em> bg, 20 px radius,
+        18 px padding, 12 px gap. Tartalom: emoji 48 px + cím 18 px / 700 + alcím 12 px / 500.
+        Magasság: kb. 160 px, így a Tab S6 Lite portrait-on a két kártya a képernyő
+        közepénél nyugodtan elfér.</li>
+        <li><strong>Napi progress chip</strong> alul — finom (40% white bg pill),
+        <code>"Ma · 2 / 4 kör"</code> 12 px / 600. Vizuálisan informál, nem dominál.</li>
+        <li><strong>Mit törlünk:</strong> a régi fejléc-doboz; a <code>border-4</code>
+        a kártyákon; a két játék-kártya <em>külön szín-bg</em>-ja (mind a kettő fehér,
+        a tartalom emoji-ja hordozza a karaktert).</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ═════════════════════ 06 · FELADAT ═════════════════════ -->
+<section id="feladat">
+  <div class="sec-head">
+    <div class="sec-num">06</div>
+    <h2>Feladat-képernyő<span class="sub">A négy modul közös „munkafelület" mintája — egy fehér tartalom-card a hue-háttér felett</span></h2>
+  </div>
+
+  <p>
+    A jelenlegi feladat-képernyők az adott modul saját logikájához igazítják a teljes
+    layoutot (kérdés helye, válasz-grid méret, mascot-mini, repeat-gomb). Ennek a négy
+    változatnak van egy közös szerkezete, amit explicit komponensé érdemes csinálni —
+    így ránézésre is felismerhető, hogy „itt egy feladat van", és a fókusz a kérdésen marad.
+  </p>
+
+  <div class="split">
+    <div>
+      <h3>Közös feladat-váz (mind a 4 modul)</h3>
+      <ol>
+        <li><strong>Header strip a háttéren</strong> (nem fehér panelban) — bal: 🌳
+        kerek 56×56; közép: progress dots (5 db, 12 px); jobb: 🔊 kerek 56×56.
+        <strong>Mascot-mini ne legyen</strong> a fejlécben.</li>
+        <li><strong>Tartalom-card</strong> — egy <em>fehér, tömör</em> kártya, kb.
+        91% szélességű, középen, <code>border-radius: 22px</code>, magassága a tartalomtól
+        függ (kb. 60–70% screen-height). Ez a „munka-asztal". A modul-hue háttér
+        körbe-kibillen, vizuálisan kontextusban tartja.</li>
+        <li><strong>Kérdés szövege</strong> — a fehér kártya tetején, 26 px / 700,
+        ink-color a modul ink-changjával. Olvasható, nem kell drop-shadow.</li>
+        <li><strong>Tárgy-area</strong> — a fehér kártya közepén. Itt jelenik meg
+        a <em>feladat-specifikus</em> tartalom (lásd lent).</li>
+        <li><strong>Válaszok</strong> — a fehér kártya alján.</li>
+        <li><strong>„Mondd újra"</strong> — kicsi, kerek, fehér 60% bg pille,
+        a tartalom-card <em>fölött</em> (a hue-területen), jobbra. Mindig elérhető,
+        sosem versenyez a tartalommal.</li>
+      </ol>
+
+      <h3>Modulonkénti tartalom-area</h3>
+      <ul>
+        <li><strong>Matek · Számolj!</strong> — a tárgyak <em>strukturált rácsban</em>,
+        nem random pozícióban (5 éves így tud számolni). 1–3 db: vízszintes sorban
+        nagyban. 4–6 db: 2 sor, 3 oszlop. 7–10 db: 2×5 vagy 5×2 rács. <em>Méret:</em> 56 px-es emojik.</li>
+        <li><strong>Matek · Villám!</strong> (subitizing) — meglévő <code>DotPattern</code>
+        komponens jó, csak középre kerül a fehér kártyán, mérete 220 px.</li>
+        <li><strong>Olvasás · Tapsolj!</strong> — emoji (72 px) fölött, alatt a szótagok
+        nagy fekete betűkkel <code>MA · CSKA</code> formában (Fredoka 700 / 36 px,
+        szótag-választó pont középre). Hangosan koppantja → minden szótag 1× felvillan zöld 200 ms.</li>
+        <li><strong>Olvasás · Rakd össze!</strong> — felül slot-sor (üres körök
+        szaggatott kerettel), alul a szótag-kártyák (kis tap-target). Drag-helyett
+        <em>tap-to-place</em> (egyszerűbb gyereknek): tap szótagra → a következő üres
+        slotba kerül.</li>
+        <li><strong>Írás · Rajzold!</strong> — a meglévő Canvas marad, de <em>nagyobb</em>
+        (kb. 380×380 px, a Tab S6 Lite portrait szélességére közel teljes szélességben).
+        Alá kerül egy „Töröld" pille és egy nagy „Tovább" CTA — a 33%/66% arány marad.</li>
+        <li><strong>Írás · Melyik jó?</strong> — 3 betű-variáció vízszintesen,
+        mind 130×130 px-es kerek kártyán, középen a meglévő LetterCanvas.</li>
+        <li><strong>Angol · Cselekedj!</strong> (TPR) — közepén egy <em>nagy, mozgó
+        kabala-figura</em> (a meglévő illusztráció), mellette/felette az ige (HU + EN).
+        Alul egyetlen primary „✓ Megcsináltam!" CTA, full-width.</li>
+        <li><strong>Angol · Mutasd meg!</strong> — 3 fehér emoji-kártya egy sorban
+        (132×132, 16 px gap). Fent a kérdés EN+HU két sorban.</li>
+      </ul>
+
+      <h4>Mit törlünk a feladat-képernyőkről</h4>
+      <ul>
+        <li>A fejléc fehér doboza (helyette: kerek ikonok a háttéren).</li>
+        <li>A mascot-mini a fejlécben (semmi funkciója).</li>
+        <li>A <code>flex justify-between</code> + három <code>flex-shrink-0</code>
+        + <code>min-h-0</code> hármas (most ez okoz váratlan üres tereket) — váltsuk
+        explicit CSS grid-re a card belsejében: <code>"title items answers"</code> sorok.</li>
+        <li>A fehér drop-shadow-os kérdés-szövegek színes háttéren — kontraszt és
+        olvashatóság miatt mindenhol a fehér kártyán lesz a kérdés, sötét szöveggel.</li>
+      </ul>
+    </div>
+
+    <!-- ─── MOCKUP: FELADAT (Matek számolj) ─── -->
+    <div>
+      <div class="tablet">
+        <div class="screen" style="background:#fbbf24">
+          <!-- header strip on background -->
+          <div style="position:absolute;top:14px;left:14px;right:14px;display:flex;align-items:center;gap:10px">
+            <div style="width:42px;height:42px;border-radius:50%;background:rgba(255,255,255,0.85);display:flex;align-items:center;justify-content:center;font-size:18px">🌳</div>
+            <div style="flex:1;display:flex;gap:6px;justify-content:center;align-items:center">
+              <i style="width:11px;height:11px;border-radius:50%;background:#fff;box-shadow:inset 0 0 0 1px rgba(120,53,15,.3)"></i>
+              <i style="width:11px;height:11px;border-radius:50%;background:#fff;box-shadow:inset 0 0 0 1px rgba(120,53,15,.3)"></i>
+              <i style="width:15px;height:15px;border-radius:50%;background:#78350f"></i>
+              <i style="width:11px;height:11px;border-radius:50%;background:rgba(120,53,15,.2)"></i>
+              <i style="width:11px;height:11px;border-radius:50%;background:rgba(120,53,15,.2)"></i>
+            </div>
+            <div style="width:42px;height:42px;border-radius:50%;background:rgba(255,255,255,0.85);display:flex;align-items:center;justify-content:center;font-size:16px">🔊</div>
+          </div>
+
+          <!-- fehér kártya -->
+          <div style="position:absolute;left:14px;right:14px;top:74px;bottom:18px;background:#fff;border-radius:22px;box-shadow:0 18px 36px -22px rgba(0,0,0,.3);padding:22px 18px;display:flex;flex-direction:column;gap:18px">
+            <div style="text-align:center;font-size:22px;font-weight:700;color:#78350f;line-height:1.2">
+              Hány pillangó<br/>van itt?
+            </div>
+
+            <!-- structured grid of items: 2 rows × 3 cols -->
+            <div style="flex:1;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(2,1fr);align-items:center;justify-items:center;padding:10px 6px">
+              <span style="font-size:40px">🦋</span>
+              <span style="font-size:40px">🦋</span>
+              <span style="font-size:40px">🦋</span>
+              <span style="font-size:40px">🦋</span>
+              <span style="font-size:40px">🦋</span>
+              <span></span>
+            </div>
+
+            <!-- válasz gombok (2x2) -->
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+              <div style="background:#fbbf24;border-radius:18px;padding:14px;text-align:center;color:#fff;box-shadow:0 8px 18px -10px rgba(0,0,0,.25)">
+                <div style="font-size:30px;font-weight:700;line-height:1">4</div>
+                <div style="font-size:11px;font-weight:600;opacity:.85;margin-top:2px">négy</div>
+              </div>
+              <div style="background:#22c55e;border-radius:18px;padding:14px;text-align:center;color:#fff;box-shadow:0 8px 18px -10px rgba(0,0,0,.3);position:relative">
+                <div style="font-size:30px;font-weight:700;line-height:1">5</div>
+                <div style="font-size:11px;font-weight:600;opacity:.85;margin-top:2px">öt</div>
+                <span style="position:absolute;top:-7px;right:-7px;width:24px;height:24px;border-radius:50%;background:#fff;color:#22c55e;font-size:14px;font-weight:700;display:flex;align-items:center;justify-content:center">✓</span>
+              </div>
+              <div style="background:#fbbf24;border-radius:18px;padding:14px;text-align:center;color:#fff;box-shadow:0 8px 18px -10px rgba(0,0,0,.25)">
+                <div style="font-size:30px;font-weight:700;line-height:1">3</div>
+                <div style="font-size:11px;font-weight:600;opacity:.85;margin-top:2px">három</div>
+              </div>
+              <div style="background:#fbbf24;border-radius:18px;padding:14px;text-align:center;color:#fff;box-shadow:0 8px 18px -10px rgba(0,0,0,.25)">
+                <div style="font-size:30px;font-weight:700;line-height:1">6</div>
+                <div style="font-size:11px;font-weight:600;opacity:.85;margin-top:2px">hat</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- mondd újra pille -->
+          <div style="position:absolute;right:18px;top:80px;background:rgba(255,255,255,0.7);border-radius:999px;padding:5px 11px;font-size:11px;font-weight:600;color:#78350f;display:flex;align-items:center;gap:4px">🔊 Újra</div>
+        </div>
+      </div>
+      <div class="mockup-caption"><b>06A</b> · Matek · Számolj! — strukturált rács + fehér munkakártya</div>
+    </div>
+  </div>
+
+  <hr/>
+
+  <!-- második mockup: Olvasás Tapsolj -->
+  <div class="split flip">
+    <div>
+      <div class="tablet">
+        <div class="screen" style="background:#3b82f6">
+          <div style="position:absolute;top:14px;left:14px;right:14px;display:flex;align-items:center;gap:10px">
+            <div style="width:42px;height:42px;border-radius:50%;background:rgba(255,255,255,0.85);display:flex;align-items:center;justify-content:center;font-size:18px">🌳</div>
+            <div style="flex:1;display:flex;gap:6px;justify-content:center;align-items:center">
+              <i style="width:11px;height:11px;border-radius:50%;background:#fff"></i>
+              <i style="width:15px;height:15px;border-radius:50%;background:#1e3a8a"></i>
+              <i style="width:11px;height:11px;border-radius:50%;background:rgba(30,58,138,.25)"></i>
+              <i style="width:11px;height:11px;border-radius:50%;background:rgba(30,58,138,.25)"></i>
+              <i style="width:11px;height:11px;border-radius:50%;background:rgba(30,58,138,.25)"></i>
+            </div>
+            <div style="width:42px;height:42px;border-radius:50%;background:rgba(255,255,255,0.85);display:flex;align-items:center;justify-content:center;font-size:16px">🔊</div>
+          </div>
+
+          <div style="position:absolute;left:14px;right:14px;top:74px;bottom:18px;background:#fff;border-radius:22px;box-shadow:0 18px 36px -22px rgba(0,0,0,.3);padding:22px 18px;display:flex;flex-direction:column;gap:14px">
+            <div style="text-align:center;font-size:20px;font-weight:700;color:#1e3a8a;line-height:1.2">
+              Hány részből áll<br/>ez a szó?
+            </div>
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px">
+              <div style="font-size:80px;line-height:1">🐱</div>
+              <div style="display:flex;gap:8px;font-size:38px;font-weight:700;color:#1e3a8a;letter-spacing:0.02em">
+                <span style="background:#dbeafe;padding:4px 14px;border-radius:14px">MA</span>
+                <span style="background:#dbeafe;padding:4px 14px;border-radius:14px">CSKA</span>
+              </div>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">
+              <div style="background:#3b82f6;color:#fff;font-weight:700;font-size:24px;border-radius:18px;padding:14px 0;text-align:center;box-shadow:0 8px 18px -10px rgba(0,0,0,.25)">1</div>
+              <div style="background:#22c55e;color:#fff;font-weight:700;font-size:24px;border-radius:18px;padding:14px 0;text-align:center;box-shadow:0 8px 18px -10px rgba(0,0,0,.3)">2</div>
+              <div style="background:#3b82f6;color:#fff;font-weight:700;font-size:24px;border-radius:18px;padding:14px 0;text-align:center;box-shadow:0 8px 18px -10px rgba(0,0,0,.25)">3</div>
+              <div style="background:#3b82f6;color:#fff;font-weight:700;font-size:24px;border-radius:18px;padding:14px 0;text-align:center;box-shadow:0 8px 18px -10px rgba(0,0,0,.25)">4</div>
+            </div>
+          </div>
+
+          <div style="position:absolute;right:18px;top:80px;background:rgba(255,255,255,0.7);border-radius:999px;padding:5px 11px;font-size:11px;font-weight:600;color:#1e3a8a">🔊 Újra</div>
+        </div>
+      </div>
+      <div class="mockup-caption"><b>06B</b> · Olvasás · Tapsolj! — ugyanaz a váz, csak hue + tartalom</div>
+    </div>
+
+    <div>
+      <h3>A négy modul-feladat egyetlen vázon</h3>
+      <p>
+        Mind a négy modul feladat-képernyője <em>azonos szerkezetű</em>: <strong>háttéren ülő
+        kerek-ikonos header + fehér tartalom-card</strong>. A modul-specifikus tartalom <em>a kártyán
+        belül</em> változik. Ez az egyszerű minta egy <code>&lt;TaskShell&gt;</code> komponensbe vonható —
+        a 4 modul TSX-ben jelentősen rövidül.
+      </p>
+
+      <h4>Komponens-javaslat</h4>
+      <ul>
+        <li><code>&lt;TaskShell hue="yellow|blue|purple|green" progress={index/total} onBack onRepeat&gt;{children}&lt;/TaskShell&gt;</code>
+        — minden modul ezt használja, a <code>children</code> a kérdés + tartalom + válasz.</li>
+        <li><code>&lt;TaskCard&gt;...&lt;/TaskCard&gt;</code> — a fehér kártya CSS grid 3 sorral:
+        <code>title / items / answers</code>. Magasság rugalmas. A 4 modul TSX-ben csak ezt a
+        három slotot tölti.</li>
+        <li><code>&lt;AnswerButton hue selected={correct|wrong|null}&gt;</code> — egy közös
+        gomb az 1-x szám / szótag / emoji válaszhoz. Egységes méret 132×84 vagy
+        négyzet, modul-hue, helyes esetén zöld overlay + ✓.</li>
+      </ul>
+
+      <h4>Mit „nyer" a gyerek ezzel</h4>
+      <ul>
+        <li><strong>Felismerhetőség</strong> — minden feladat-screen ugyanúgy néz ki, csak más
+        színű ég és más feladat. Senki nem kell, hogy „megtanulja az új képernyőt".</li>
+        <li><strong>Olvashatóság</strong> — a kérdés fehéren ül színes háttéren helyett
+        fehér kártyán <em>sötét</em> színnel. Kontraszt-arány a WCAG AAA tartományba kerül.</li>
+        <li><strong>Csendesebb fej</strong> — egy nagy, kontrasztos, középre rendezett tárgy
+        helyett a tárgyak véletlen-szétszórása helyett <em>strukturált rács</em>.
+        Subitizing → mennyiség-felismerés tovább megy (ami a spec célja a matek-modulban).</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ═════════════════════ 07 · ROUND-END ═════════════════════ -->
+<section id="jutalom">
+  <div class="sec-head">
+    <div class="sec-num">07</div>
+    <h2>Round-end<span class="sub">A jutalom a kertben történjen — ne egy generikus ünneplő-overlay-en</span></h2>
+  </div>
+
+  <div class="split">
+    <div>
+      <div class="finding">
+        <span class="lbl">Mit látunk most</span>
+        <p>
+          Egy önálló round-end képernyő modul-hue gradient-en: 4 csillag-pop animáció + 1
+          óriási centrális emoji + 2 sor szöveg + bounce-tánc kabala + 2 nagy CTA gomb.
+          6+ párhuzamos animáció, a 5 éves figyelme szétesik, és pont a lényeg —
+          „kaptam egy új virágot/ruhát" — nem látható.
+        </p>
+      </div>
+
+      <div class="rec">
+        <span class="lbl">Mit javasolok</span>
+        <p>
+          Ne egy önálló round-end képernyő legyen, hanem <strong>visszatérés a kertbe
+          + overlay</strong>. A kert már a háttéren van. Egy fél-átlátszó réteg
+          megjeleníti a <strong>jutalom-tárgyat</strong> (új virág / új ruha), a kabala
+          jobb alsóból „belép" és mond egy rövid dicséretet. Két gomb: „Még egy kör" /
+          „Maradok a kertben".
+        </p>
+      </div>
+
+      <h4>A jutalom három szintje, három fokozatban</h4>
+      <ul>
+        <li><strong>Mikro</strong> (egy feladat sikere) — nincs külön képernyő, csak a
+        meglévő <code>RewardOverlay</code> + a <code>star-pop</code>. Marad.</li>
+        <li><strong>Közepes (round vége)</strong> — visszatérés a kertbe,
+        a középen <em>egy fókusz-elem</em>: az új virág a hozzá tartozó bed-en
+        nagyban kibomlik (vagy az új ruha 3D-szerű izolátumban Panka előtt).
+        Egyetlen mondat: <em>„Új tulipán a kertedben!"</em> Egyetlen primary
+        gomb („Még egy kör"), egyetlen secondary („Maradok"). Konfetti maradhat,
+        ritka és visszafogott.</li>
+        <li><strong>Nagy (napi cél)</strong> — kerti tűzijáték + fa-növekedés
+        animáció + dallam. <em>Ez</em> kapja a teljes show-t. Külön overlay.</li>
+      </ul>
+
+      <h4>Konkrét layout (közepes szint)</h4>
+      <ul>
+        <li>A kert <em>félig elsötétített</em> (0.35 black overlay).</li>
+        <li>Középen a <strong>jutalom-tárgy</strong>: új virág 140 px-es emoji,
+        körülötte halvány bloom-sugár (8 px radiális vonal, <code>flower-bloom</code> anim).
+        Új ruha esetén: Panka avatár az új ruhával, kerek fény körülötte.</li>
+        <li>A jutalom-tárgy fölött 1 sor szöveg: <code>"Új tulipán!"</code> 30 px / 700, fehér.</li>
+        <li>Két gomb alul: primary „Még egy kör!" (modul-hue), secondary „Maradok"
+        (transparent + white border). Méret: 96 px / 80 px.</li>
+        <li>Jobb alsó sarokban: <strong>a kabala kicsi pop</strong> (a meglévő
+        Illustration, 80 px), egy beszédbuborékkal: pl. <em>„Hűha! Megint sikerült!"</em>.</li>
+        <li>Csillagok: maximum 2 db, finoman, a jutalom-tárgy két oldalán
+        (a meglévő <code>star-pop</code>, de szelektív).</li>
+      </ul>
+    </div>
+
+    <!-- ─── MOCKUP: ROUND-END (visszatérés a kertbe) ─── -->
+    <div>
+      <div class="tablet">
+        <div class="screen" style="background:linear-gradient(to bottom,#bae6fd 0%,#e0f2fe 38%,#86efac 38%,#22c55e 100%)">
+          <!-- (a kert hátteren maradt, ugyanaz mint 04A) -->
+          <svg viewBox="0 0 140 50" style="position:absolute;top:6%;left:10%;width:90px;opacity:.5"><ellipse cx="40" cy="34" rx="32" ry="16" fill="#fff"/><ellipse cx="70" cy="30" rx="30" ry="18" fill="#fff"/><ellipse cx="100" cy="34" rx="26" ry="14" fill="#fff"/></svg>
+          <!-- fa -->
+          <div style="position:absolute;left:50%;bottom:62%;transform:translateX(-50%);width:130px;text-align:center;opacity:.85">
+            <svg viewBox="0 0 200 240" style="width:130px"><path d="M88 232 Q84 200 92 158" stroke="#78350f" stroke-width="22" fill="none" stroke-linecap="round"/><path d="M108 232 Q112 200 104 158" stroke="#78350f" stroke-width="22" fill="none" stroke-linecap="round"/><ellipse cx="98" cy="100" rx="80" ry="84" fill="#15803d"/><ellipse cx="80" cy="80" rx="56" ry="60" fill="#16a34a"/><ellipse cx="118" cy="86" rx="54" ry="58" fill="#22c55e"/></svg>
+          </div>
+
+          <!-- elsötétítés -->
+          <div style="position:absolute;inset:0;background:rgba(0,0,0,0.32)"></div>
+
+          <!-- jutalom centrum -->
+          <div style="position:absolute;top:34%;left:50%;transform:translate(-50%,-50%);text-align:center;width:80%">
+            <div style="font-size:14px;font-weight:600;letter-spacing:0.15em;text-transform:uppercase;color:rgba(255,255,255,0.7);margin-bottom:8px">+ Új virág</div>
+            <div style="font-size:28px;font-weight:700;color:#fff;margin-bottom:18px;line-height:1.1">Új tulipán<br/>a kertedben!</div>
+            <div style="display:flex;justify-content:center;align-items:center;position:relative;height:140px">
+              <span style="position:absolute;font-size:18px;left:14%;top:8%">⭐</span>
+              <span style="position:absolute;font-size:18px;right:14%;top:18%">✨</span>
+              <div style="font-size:110px;line-height:1;filter:drop-shadow(0 0 24px rgba(251,191,36,0.6))">🌷</div>
+            </div>
+          </div>
+
+          <!-- kabala jobb alul, buborékkal -->
+          <div style="position:absolute;left:14px;bottom:120px;display:flex;align-items:flex-end;gap:8px">
+            <div style="width:62px;height:62px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;font-size:34px;box-shadow:0 12px 24px -12px rgba(0,0,0,.4)">🐱</div>
+            <div style="background:#fff;border-radius:14px 14px 14px 4px;padding:8px 12px;font-size:12px;font-weight:600;color:#1e3a8a;max-width:140px;line-height:1.3;box-shadow:0 8px 16px -8px rgba(0,0,0,.3)">
+              Hűha, megint<br/>sikerült!
+            </div>
+          </div>
+
+          <!-- 2 CTA -->
+          <div style="position:absolute;left:14px;right:14px;bottom:20px;display:flex;flex-direction:column;gap:10px">
+            <div style="background:#fbbf24;color:#78350f;font-size:18px;font-weight:700;border-radius:20px;padding:18px;text-align:center;box-shadow:0 12px 24px -12px rgba(0,0,0,.4)">🔄 Még egy kör!</div>
+            <div style="background:rgba(255,255,255,0.15);border:1.5px solid rgba(255,255,255,0.4);color:#fff;font-size:15px;font-weight:600;border-radius:18px;padding:12px;text-align:center">🌳 Maradok a kertben</div>
+          </div>
+
+        </div>
+      </div>
+      <div class="mockup-caption"><b>07A</b> · Round-end (közepes) — visszatérés a kertbe overlayjel</div>
+    </div>
+  </div>
+</section>
+
+<!-- ═════════════════════ 08 · RUHATÁR ═════════════════════ -->
+<section id="ruhatar">
+  <div class="sec-head">
+    <div class="sec-num">08</div>
+    <h2>Ruhatár<span class="sub">Wardrobe.tsx — álló tájolásban a fent-lent split sokkal természetesebb mint a bal-jobb</span></h2>
+  </div>
+
+  <div class="split flip">
+    <!-- mockup -->
+    <div>
+      <div class="tablet">
+        <div class="screen" style="background:linear-gradient(to bottom,#f5f3ff 0%,#fce7f3 100%)">
+          <!-- header -->
+          <div style="position:absolute;top:14px;left:14px;right:14px;display:flex;align-items:center;gap:10px">
+            <div style="width:42px;height:42px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;font-size:18px;box-shadow:0 4px 10px -6px rgba(0,0,0,.15)">🌳</div>
+            <div style="flex:1;text-align:center;font-size:20px;font-weight:700;color:#5b21b6">👗 Panka szekrénye</div>
+            <div style="width:42px;height:42px"></div>
+          </div>
+
+          <!-- panka avatar nagyban — felső 40% -->
+          <div style="position:absolute;left:0;right:0;top:74px;height:36%;display:flex;justify-content:center;align-items:flex-end">
+            <div style="position:relative;display:flex;flex-direction:column;align-items:center">
+              <!-- glow -->
+              <div style="position:absolute;bottom:8px;width:140px;height:24px;background:radial-gradient(ellipse,rgba(167,139,250,0.4),transparent 70%);border-radius:50%"></div>
+              <!-- avatar -->
+              <div style="position:relative">
+                <div style="width:56px;height:56px;border-radius:50%;background:#fcd5b5;margin:0 auto;position:relative">
+                  <span style="position:absolute;top:-22px;left:-12px;width:80px;height:38px;background:#8b5e3c;border-radius:50% 50% 30% 30%"></span>
+                  <span style="position:absolute;top:-12px;left:50%;transform:translateX(-50%);font-size:18px;z-index:2">🎀</span>
+                </div>
+                <div style="width:74px;height:80px;background:#f472b6;border-radius:14px 14px 18px 18px;margin-top:-6px"></div>
+                <div style="width:64px;height:46px;background:#f9a8d4;border-radius:14px 14px 6px 6px;margin:-2px auto 0"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- tabs -->
+          <div style="position:absolute;left:14px;right:14px;top:46%;display:grid;grid-template-columns:repeat(4,1fr);gap:6px">
+            <div style="background:#8b5cf6;color:#fff;font-size:11px;font-weight:600;padding:9px 0;border-radius:14px;text-align:center">👗 Ruha</div>
+            <div style="background:#fff;color:#5b21b6;font-size:11px;font-weight:600;padding:9px 0;border-radius:14px;text-align:center">💇 Haj</div>
+            <div style="background:#fff;color:#5b21b6;font-size:11px;font-weight:600;padding:9px 0;border-radius:14px;text-align:center">✨ Extra</div>
+            <div style="background:#fff;color:#5b21b6;font-size:11px;font-weight:600;padding:9px 0;border-radius:14px;text-align:center">👠 Cipő</div>
+          </div>
+
+          <!-- items grid (4 cols × 2 rows visible) -->
+          <div style="position:absolute;left:14px;right:14px;top:54%;bottom:18px;display:grid;grid-template-columns:repeat(4,1fr);grid-template-rows:repeat(2,1fr);gap:8px">
+            <div style="background:#8b5cf6;border-radius:16px;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#fff;position:relative;box-shadow:0 8px 18px -10px rgba(139,92,246,.6)">
+              <span style="font-size:34px">👗</span>
+              <span style="font-size:9px;font-weight:600;margin-top:1px">Hercegnő</span>
+              <span style="position:absolute;top:5px;left:7px;font-size:11px;font-weight:700">✓</span>
+            </div>
+            <div style="background:#fff;border-radius:16px;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#5b21b6">
+              <span style="font-size:34px">🦋</span>
+              <span style="font-size:9px;font-weight:600;margin-top:1px">Pillangó</span>
+            </div>
+            <div style="background:#fff;border-radius:16px;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#5b21b6">
+              <span style="font-size:34px">🌧️</span>
+              <span style="font-size:9px;font-weight:600;margin-top:1px">Esőkabát</span>
+            </div>
+            <div style="background:#f5f3ff;border-radius:16px;display:flex;align-items:center;justify-content:center;color:#a78bfa;opacity:.7">
+              <span style="font-size:22px">🔒</span>
+            </div>
+            <div style="background:#f5f3ff;border-radius:16px;display:flex;align-items:center;justify-content:center;color:#a78bfa;opacity:.7">
+              <span style="font-size:22px">🔒</span>
+            </div>
+            <div style="background:#f5f3ff;border-radius:16px;display:flex;align-items:center;justify-content:center;color:#a78bfa;opacity:.7">
+              <span style="font-size:22px">🔒</span>
+            </div>
+            <div style="background:#f5f3ff;border-radius:16px;display:flex;align-items:center;justify-content:center;color:#a78bfa;opacity:.7">
+              <span style="font-size:22px">🔒</span>
+            </div>
+            <div style="background:#f5f3ff;border-radius:16px;display:flex;align-items:center;justify-content:center;color:#a78bfa;opacity:.7">
+              <span style="font-size:22px">🔒</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="mockup-caption"><b>08A</b> · Ruhatár — fent Panka, lent tabok + 4×N rács</div>
+    </div>
+
+    <div>
+      <div class="finding">
+        <span class="lbl">Mit látunk most</span>
+        <p>
+          A jelenlegi layout <code>flex</code> bal–jobb split: 38% avatar, 62% tabok + 3 oszlopos
+          grid. Álló tájolásban ez nyomott: a Panka „alacsony" lesz (csak a magasság ~50%-a),
+          a 3 oszlopos grid a 62%-os sávban kis kártyákat eredményez.
+        </p>
+      </div>
+
+      <div class="rec">
+        <span class="lbl">Mit javasolok</span>
+        <p>
+          <strong>Fent-lent split:</strong> felső 40% Panka-preview középen (nagy,
+          „bemutatóra állva"), alsó 60% tabok + 4 oszlopos rács. Így Panka magasabbra
+          kerül (a gyerek úgy érzi „Panka előtte áll"), és minden kategóriában
+          látható egyszerre 8–12 elem.
+        </p>
+      </div>
+
+      <h4>Konkrét layout</h4>
+      <ul>
+        <li><strong>Felső 40% — Panka stand:</strong> halvány padló-glow (sugaras radial,
+        violet 20% → 0%), Panka avatár <code>w: 130px, h: 250px</code> középen.
+        A meglévő <code>PankaAvatarDressable</code> komponens. <em>Egy</em> finom shadow.</li>
+        <li><strong>Tabok</strong>: 4 db egyenlő szélességű (Ruha / Haj / Extra / Cipő),
+        16 px gap. Az aktív tab = modul-purple tömör; az inaktív = fehér 80% bg, lila ink.
+        Nincs ikon a tabokon (csak az „Extra" jelez ✨-mel) — az emoji-kat a kártyák hordozzák.</li>
+        <li><strong>Items rács</strong>: 4 oszlop, ahányszor fér, annyi sor; gap 8 px.
+        Egy kártya kb. 84×84 px. <em>Mindig 8 placeholder látható</em>, üres slot esetén
+        🔒 ikon halvány purple bg-en. Ez vizuális ígéret: „ide jönnek az új ruhák".</li>
+        <li><strong>Egyenruhában lévő</strong> elem: modul-purple tömör bg, fehér emoji,
+        bal felül kis ✓ pötty (a meglévő logika).</li>
+        <li><strong>Lock státusz</strong>: nem áttetszőség, hanem üres halvány slot.
+        Ez kevésbé „elérhetetlennek" tűnik, inkább <em>„hely van neki"</em> érzetet ad.</li>
+        <li><strong>Mit törlünk</strong>: az alsó-háttér purple körök (felesleges
+        dekoráció); a header fehér-doboza (helyette: tiszta header strip, mint mindenhol);
+        a nem-egyforma radius-ok (mind 16 px).</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ═════════════════════ 09 · KABALA-VÁLASZTÓ ═════════════════════ -->
+<section id="kabala">
+  <div class="sec-head">
+    <div class="sec-num">09</div>
+    <h2>Kabala-választó &amp; megerősítés<span class="sub">MascotSelect &amp; MascotConfirm — első benyomás, ezért érdemes csendesebbé tenni</span></h2>
+  </div>
+
+  <div class="split">
+    <div>
+      <div class="finding">
+        <span class="lbl">Mit látunk most</span>
+        <p>
+          Sky/teal gradient háttér, 5xl-6xl fehér drop-shadow cím, 3 kabala-kártya
+          azonos színszínkartonjain (mind a gradient), border-4 + shadow-2xl + scale-pulse anim
+          a kijelölt elemen. A felirat „Válassz egy barátot!" és a catchphrase kicsi és
+          alacsony-kontrasztú a kártya közepén.
+        </p>
+      </div>
+
+      <div class="rec">
+        <span class="lbl">Mit javasolok</span>
+        <p>
+          Tiszta, <strong>tömör világos háttér</strong> (sky-50 ≈ #f0f9ff). Cím sötét
+          (sky-900) — olvasható drop-shadow nélkül. 3 kabala-kártya <strong>fehér</strong>
+          tömör bg-en, mindegyik <em>saját</em> diszkrét hue-glow-val (kutya = ősz,
+          cica = pink, méh = sárga). A nagy illusztráció dominál, a név alatta 28 px-en, a
+          catchphrase nem szerepel a kártyán (felolvasásra kerül, ne a screenen).
+        </p>
+      </div>
+
+      <h4>Konkrét layout</h4>
+      <ul>
+        <li><strong>Háttér</strong>: <code>#f0f9ff</code>. Felső 25%: világos sky
+        (<code>#e0f2fe</code>) átmenet. Egy halvány nap-disk a jobb felső sarokban
+        (sárga 30% opacity).</li>
+        <li><strong>Cím</strong>: <code>"Válassz egy barátot"</code> · Fredoka 700 / 36 px,
+        szín <code>#0c4a6e</code>, középre. Alatta egy mosolygó arc 🌟 emoji
+        helyett <em>nincs</em> emoji. Sub-szöveg: <code>"Koppints valamelyikre"</code>
+        · 16 px / 500, sky-700.</li>
+        <li><strong>3 kabala-kártya</strong>: vízszintesen, 12 px gap; fehér bg, 24 px radius.
+        Egy kártyán: kabala illusztráció felül ~140×140 px (a meglévő SVG), név 24 px / 700
+        alatta, alatta kis háttér-szín-pötty (3 db, mascot-hue), pl. „🐶 kutya".</li>
+        <li><strong>Kiválasztott állapot</strong>: a kártya elemelkedik (8 px translateY),
+        mascot-hue-color soft ring kerül köré (4 px radius offset), de <em>nem pulzál</em>.
+        A többi kártya halványul (60% opacity).</li>
+        <li><strong>MascotConfirm</strong>: ugyanaz a világos bg, középen a kiválasztott
+        kabala nagyban (180 px), 1 sor szöveg <code>"Ő legyen a barátod?"</code>,
+        primary „Igen, ő!" full-width purple gomb, alatta diszkrét „← Mégsem".</li>
+      </ul>
+
+      <h4>Miért fontos ez</h4>
+      <p>
+        Ez Panka <strong>első képernyője</strong>. Most a fehér drop-shadow szöveg
+        + 3 gradient kártya + animáló cél „túl sok egyszerre". Egyszerűsítve először a
+        kabaláit látja meg, és az ő arcuk visz tovább.
+      </p>
+    </div>
+
+    <div>
+      <div class="tablet">
+        <div class="screen" style="background:linear-gradient(to bottom,#e0f2fe 0%,#f0f9ff 30%,#f0f9ff 100%)">
+          <!-- nap halvány -->
+          <div style="position:absolute;top:30px;right:30px;width:64px;height:64px;border-radius:50%;background:radial-gradient(circle,#fde68a,rgba(253,224,71,0));opacity:.6"></div>
+
+          <!-- cím -->
+          <div style="position:absolute;top:62px;left:0;right:0;text-align:center">
+            <div style="font-size:30px;font-weight:700;color:#0c4a6e;letter-spacing:-0.01em">Válassz egy barátot</div>
+            <div style="font-size:13px;font-weight:500;color:#075985;opacity:.7;margin-top:4px">Koppints valamelyikre</div>
+          </div>
+
+          <!-- 3 kártya -->
+          <div style="position:absolute;left:14px;right:14px;top:170px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
+            <div style="background:#fff;border-radius:22px;padding:14px 6px;text-align:center;box-shadow:0 14px 28px -16px rgba(15,23,42,.25)">
+              <div style="width:78px;height:78px;border-radius:50%;background:linear-gradient(160deg,#fde68a,#fbbf24);margin:0 auto;display:flex;align-items:center;justify-content:center;font-size:46px">🐶</div>
+              <div style="font-size:16px;font-weight:700;color:#0c4a6e;margin-top:8px">Balambér</div>
+              <div style="font-size:10px;font-weight:500;color:#475569;opacity:.7;margin-top:2px">kutya</div>
+            </div>
+            <div style="background:#fff;border-radius:22px;padding:14px 6px;text-align:center;box-shadow:0 14px 28px -16px rgba(15,23,42,.25),0 0 0 3px rgba(244,114,182,0.6);transform:translateY(-6px)">
+              <div style="width:78px;height:78px;border-radius:50%;background:linear-gradient(160deg,#fbcfe8,#f472b6);margin:0 auto;display:flex;align-items:center;justify-content:center;font-size:46px">🐱</div>
+              <div style="font-size:16px;font-weight:700;color:#0c4a6e;margin-top:8px">Kifli</div>
+              <div style="font-size:10px;font-weight:500;color:#475569;opacity:.7;margin-top:2px">cica</div>
+            </div>
+            <div style="background:#fff;border-radius:22px;padding:14px 6px;text-align:center;box-shadow:0 14px 28px -16px rgba(15,23,42,.25);opacity:.65">
+              <div style="width:78px;height:78px;border-radius:50%;background:linear-gradient(160deg,#fef9c3,#facc15);margin:0 auto;display:flex;align-items:center;justify-content:center;font-size:46px">🐝</div>
+              <div style="font-size:16px;font-weight:700;color:#0c4a6e;margin-top:8px">Bolyhos</div>
+              <div style="font-size:10px;font-weight:500;color:#475569;opacity:.7;margin-top:2px">méhecske</div>
+            </div>
+          </div>
+
+          <!-- alsó hint -->
+          <div style="position:absolute;left:0;right:0;bottom:32px;text-align:center;font-size:12px;font-weight:500;color:#475569;opacity:.55">👆 Tartsd 1 mp-ig, és bemutatkozik</div>
+        </div>
+      </div>
+      <div class="mockup-caption"><b>09A</b> · Kabala-választó — tömör fehér kártyák, alacsony zaj</div>
+    </div>
+  </div>
+</section>
+
+<!-- ═════════════════════ 10 · SZÜLŐI ZÁR ═════════════════════ -->
+<section id="szuloi">
+  <div class="sec-head">
+    <div class="sec-num">10</div>
+    <h2>Szülői zár<span class="sub">ParentLock.tsx — már jó, csak finomítás + új belépési pont</span></h2>
+  </div>
+
+  <p>
+    A jelenlegi 3-színes szekvencia (sárga → kék → piros) jó. A változás csak két dolog:
+    a <strong>belépési pont</strong> (lásd 04 · Kert: a fogaskerék helyett 3 mp hosszú-nyomás
+    a fa törzsén), és a <strong>vizuális tone</strong> (most <code>bg-gray-900</code>, ami
+    kissé barátságtalan a kerti kontextusban — váltsuk diszkrét éjszakai kék-szürkére
+    <code>#0f172a</code>, ami megőrzi a „felnőtt felület" jelleget, de hangulatban közelebb).
+  </p>
+
+  <ul>
+    <li><strong>Belépési pont</strong>: a Garden-en a fa törzsén 3 mp pointer-down →
+    finom haptic vibrate (Android: <code>navigator.vibrate(40)</code>) → fade-in a ParentLock.</li>
+    <li><strong>Vizuális</strong>: háttér <code>#0f172a</code>; gomb-méret marad 96 px;
+    a feloldás után a „Kabala csere" mellett legyen még két új mező:</li>
+  </ul>
+
+  <h4>Új szülői funkciók (a meglévő spec szerint, eddig nem implementálva)</h4>
+  <ul>
+    <li><strong>Dicséret-bank szerkesztő</strong> — a spec említi: „a szülő bővítheti
+    saját családi kifejezésekkel". Egy egyszerű lista UI: az alapkészlet read-only,
+    alatta „+ Új dicséret" gomb, sor-szintű szerkesztés.</li>
+    <li><strong>Haladás-áttekintés</strong> — 4 modulonként: hány feladat /
+    hány siker az elmúlt héten. Sávdiagram, nem szám-zsúfolás.</li>
+    <li><strong>Nehézség</strong> — kapcsoló: Matek számtartomány (1–5 / 1–10), Olvasás
+    szint (1 / 2 / 3), Angol pool (csak ismert / új igék is). Csak szülő érintheti.</li>
+  </ul>
+</section>
+
+<!-- ═════════════════════ 11 · CLAUDE CODE PROMPT ═════════════════════ -->
+<section id="prompt">
+  <div class="sec-head">
+    <div class="sec-num">11</div>
+    <h2>Claude Code prompt<span class="sub">Másold be egészben — strukturált utasítás-fa, hivatkozással erre a docra</span></h2>
+  </div>
+
+  <p>
+    A prompt feltételezi, hogy ez a HTML doc a repo-ban van (vagy a beszélgetésbe csatolva).
+    A munkát feladat-batch-ekben végezzük el — nem egyben az egész app-ot, hanem
+    fokozatosan, hogy minden lépés után tesztelhető legyen a tableten.
+  </p>
+
+  <div class="prompt-block"><span class="pcomment"># pankaLearn — UI redesign v1 implementálás</span>
+
+<span class="pcomment"># Kontextus</span>
+A pankaLearn app egy 5 éves számára készült tanulóeszköz (matematika, olvasás, írás, angol).
+A jelenlegi UI funkcionálisan kész, de a layout szétszórt, az elemek súlyozása egyenletlen, és a
+vizuális zaj magas. <span class="pkey">A színpalettát NEM változtatjuk</span> — a modul-színek
+(sárga = matek, kék = olvasás, lila = írás, zöld = angol) maradnak. A változás layout,
+hierarchia, komponens-vokabulárium és méretek szintjén történik.
+
+A teljes design tervet a "pankaLearn redesign terv.html" tartalmazza. Olvasd át először,
+és csak utána kezdj kódolni. A kulcs-elvek:
+
+<span class="psection">VEZÉRELVEK</span>
+1. <span class="pkey">Egy képernyő — egy fókusz</span>: minden képernyőn egy nagy központi tárgy van.
+2. <span class="pkey">Egy közös fejléc-pattern</span>: bal kerek 🌳-vissza, közép progress/cím, jobb kerek 🔊.
+   Nincs fehér panel a fejlécben; nincs mascot-mini a feladat-fejlécben.
+3. <span class="pkey">Egy primary CTA pattern</span>: full-width, ≥84px magas, 22px radius, font-weight 700,
+   tömör szín, EGY shadow. Nincs border-4, nincs gradient gombokon.
+4. <span class="pkey">A jutalom a kertben történik</span>: round-end ne önálló képernyő, hanem overlay
+   a kert fölött, ahol az új virág/ruha kibomlik.
+5. <span class="pkey">Csendesebb vizuális anyag</span>: egy radius (22 px), egy shadow tier, egy
+   font (Fredoka 500/600/700), két fontsúly (600, 700). Nincs `font-black`.
+
+<span class="psection">DESIGN TOKEN-EK</span>
+Hozz létre egy `src/styles/tokens.css` fájlt:
+<span class="pkey">--r-card: 22px; --r-pill: 16px;
+--sh-1: 0 12px 24px -12px rgba(0,0,0,.25);
+/* type scale, Fredoka */
+--t-display: 700 56px/1.1;   --t-title: 700 36px/1.2;
+--t-action:  700 28px/1.0;   --t-label: 600 22px/1.2;
+--t-helper:  500 16px/1.4;</span>
+
+A `src/index.css`-ben importáld be, és cseréld le a Tailwind globálokat ezekre,
+ahol szükséges. A `font-black` osztályokat a kódbázisban cseréld `font-bold`-ra.
+Tailwind oldalon töröld a `border-4` használatokat (minden gomb/kártya); ha még szükséges
+egy keret, akkor `shadow-[inset_0_0_0_1px_rgba(255,255,255,0.5)]`.
+
+<span class="psection">FELADAT BATCH-EK</span>
+Egyenként végezd, mindegyik után állj meg és jelezz, hogy tesztelhessem a tableten.
+
+<span class="pkey">BATCH 1 — Közös shell és tokenek</span>
+- Hozd létre `src/components/ScreenShell.tsx`-et (modul-screen wrapper, `hue` prop).
+- Hozd létre `src/components/TaskShell.tsx`-et: header strip (🌳 / progress / 🔊) +
+  fehér tartalom-card. Props: `hue`, `progressIndex`, `total`, `onBack`, `onRepeat`.
+- Hozd létre `src/components/AnswerButton.tsx`-et: egységes válasz-gomb, `hue` + `state`.
+- Tokenek + Fredoka font betöltése (Google Fonts), Tailwind config-ban a `font-display` és
+  `font-sans` legyen Fredoka.
+
+<span class="pkey">BATCH 2 — Garden (főképernyő)</span>
+Lásd a doc 04. szekcióját. Konkrét pontok:
+- Töröld a 4 sarki ModuleButton-t. Helyette 4 modul-házat egy `<HouseStrip>` komponensben,
+  egy sorban, lent a fűben. Egy ház: 86×118 px, nyeregtető (modul-darker hue), homlokzat
+  (modul-hue), közepén 32px emoji, alatta 12px / 600 fehér modul-név.
+- A 4 virág-ágyás kerüljön a 4 ház FÖLÉ közvetlenül (4 egyforma sáv, balról jobbra:
+  tulipán/napraforgó/rózsa/pipacs). Egy sávban a 8 hely fix 4×2 mini-rács.
+- Panka avatár + szekrény: jobb alsó sarokba, „Panka kuckója" blokk (vízszintesen
+  különvált a 4 ház sortól). Szekrény-ikon: 62×62 lila ház-pille 👗-emojival.
+- Hangerő gomb: bal felül, 56×56 kerek. Mellé tedd a napi-cél kis emoji-progress chip-jét
+  (`4 virág-pötty, amennyit ma teljesített`).
+- Töröld a fogaskerék szülői zár ikont. A ParentLock megnyitása a fa törzsén 3 mp
+  pointer-down (a meglévő hosszú-nyomás logikát átvedd a mascot-csere-buborékról).
+  Mascot-csere maradjon, csak hosszabb nyomás indítja, eltérő helyen.
+
+<span class="pkey">BATCH 3 — Modul-szelektor</span>
+Mind a 4 modul `phase === 'select'` ágát ugyanarra a kódra cseréljük:
+- Tömör modul-hue háttér (no gradient).
+- Header strip a háttéren (a doc 05.A mockupja szerint).
+- Mascot kerek bélyeg (120 px, fehér tömör).
+- Kérdés `"Melyik játékot választod?"` — 24 px / 700, modul-ink-szín.
+- 2 fehér tömör játék-kártya. Egy kártya: 48px emoji + 18px/700 cím + 12px alcím.
+- Napi progress chip alul.
+Töröld a régi fehér-panel headert és a border-4 gradient kártyákat.
+
+<span class="pkey">BATCH 4 — Feladat-képernyők (4 modul)</span>
+Minden modul `phase === 'game'` ágát írd át, hogy a `<TaskShell>` + `<TaskCard>` keretet
+használja. A modul-specifikus tartalom:
+- <span class="pkey">Matek · Számolj!</span>: a tárgyak ne random pozícióban szóródjanak;
+  strukturált rács 1-10-ig (1-3: 1 sor; 4-6: 2x3; 7-10: 2x5).
+- <span class="pkey">Matek · Villám!</span>: meglévő DotPattern középre a fehér kártyán.
+- <span class="pkey">Olvasás · Tapsolj!</span>: nagy emoji + szótagok pille-kártyákban
+  (`MA` `CSKA`), 4 válasz-gomb 1-4-ig.
+- <span class="pkey">Olvasás · Rakd össze!</span>: tap-to-place (drag helyett);
+  szótag-kártya koppintásra a következő üres slotba kerül.
+- <span class="pkey">Írás · Rajzold!</span>: canvas méret 380×380, lent 2 gomb:
+  „Töröld" pille (33%) + „Tovább" primary (66%).
+- <span class="pkey">Írás · Melyik jó?</span>: 3 betű-variáció vízszintesen, 130×130 px.
+- <span class="pkey">Angol · Cselekedj!</span>: nagy kabala figura középen + ige
+  (HU 36 px, EN 16 px ghost) + 1 primary „Megcsináltam!" CTA.
+- <span class="pkey">Angol · Mutasd meg!</span>: 3 fehér emoji-kártya egy sorban,
+  132×132 px, 16 px gap.
+
+A mindenhol megjelenő mascot-mini ikont töröld a fejlécből. A „🔊 Mondd újra" gomb
+kerüljön a fehér kártya FÖLÉ (a hue-területre), kis pille formában jobbra fent.
+
+<span class="pkey">BATCH 5 — Round-end overlay</span>
+Vond össze a 4 modul round-end-jét egy `<RoundCompleteOverlay>` komponensbe:
+- Render: a kert hátteren ül egy 0.32 black overlay.
+- Centrumban a jutalom-tárgy (új virág 110 px emoji + halvány fény) vagy az új ruha
+  (ha unlock történt, az új ruhával felöltöztetett mini-Panka).
+- 1 cím („Új tulipán a kertedben!" / „Új ruha vár rád!").
+- Kabala bal alul kicsi (62 px) beszédbuborékkal, dicséret-bankból random egy közepes
+  szöveg.
+- 2 CTA: primary modul-hue „Még egy kör!" + secondary transparent „Maradok a kertben".
+- Csak 1-2 csillag-pop anim (nem 4). Konfetti maradhat.
+- Eltávolítjuk a meglévő `phase === 'round-end'` képernyőket (külön view-ket).
+  Helyettük az overlay jelenik meg a Garden render felett (state: `roundJustEnded`).
+
+<span class="pkey">BATCH 6 — Ruhatár</span>
+Layout átfordítás bal-jobb-ról fent-lent-re (doc 08. szekció szerint):
+- Felső 40%: Panka avatár középen, halvány violet glow.
+- 14 px fejléc strip.
+- Tabok: 4 db egyenlő (Ruha / Haj / Extra / Cipő), aktív = purple tömör; inaktív = fehér.
+- Items: 4 oszlopos rács 8 px gap-pel, kártya 84×84. Lock-elt slot = halvány violet bg + 🔒.
+- Töröld a háttér-cirkulokat, a fehér-panel headert, a border-4-eket.
+
+<span class="pkey">BATCH 7 — Kabala-választó + megerősítő</span>
+- Háttér tömör #f0f9ff (sky-50), felső 25% halvány sky-100 átmenet.
+- Cím sötét sky-900 (drop-shadow nélkül).
+- 3 kabala-kártya fehér bg, 22 px radius, 1 finom shadow. Mascot illusztráció kör
+  hue-glow-val felül (78×78), alatta név 16 px / 700.
+- Kiválasztott: elemelkedik 6 px + hue-szín ring (no pulse anim).
+- MascotConfirm: ugyanaz a bg, nagy kabala 180 px, 1 cím, 1 primary purple CTA,
+  diszkrét visszalépés.
+Töröld a régi 5xl-6xl fehér drop-shadow címet, a gradient kártyákat, a card-pulse
+keyframe-et a kiválasztott kártyán.
+
+<span class="pkey">BATCH 8 — Szülői zár</span>
+- Háttér: #0f172a (slate-900) a gray-900 helyett.
+- Belépés: a Garden-ben a fa törzsén 3 mp pointer-down. Mascot-csere maradjon
+  hosszú-nyomással egy másik helyen (avatár vagy szekrény).
+- Új mezők (későbbi batch-ben — most csak elhelyezés): dicséret-bank, haladás-áttekintés,
+  nehézség. Most csak strukturáld a feloldott szekció UI-ját úgy, hogy fogadja őket
+  (`<ParentTabs>`: Kabala / Dicséretek / Haladás / Nehézség).
+
+<span class="psection">VÉGÉN</span>
+- Töröld a `text-shadow`/`drop-shadow` használatokat, ahol már a fehér kártya gondoskodik
+  a kontrasztról.
+- Töröld a `flex-shrink-0` + `min-h-0` + `justify-between` hármast, ahol a TaskCard CSS
+  grid sorai biztosítják a layoutot.
+- A `card-pulse`, `bounce-dance`, `correct-answer`, `flower-bloom`, `star-pop`, `shake-no`
+  keyframe-eket TARTSD MEG (jó animációk). Csak ritkábban használd őket.
+
+<span class="psection">ELLENŐRZÉS</span>
+Minden batch után tesztelj a Galaxy Tab S6 Lite-on (vagy 1200×2000 portrait Chrome devtools
+emulátoron). Checklist:
+□ Egyik képernyőn sincs több mint 1 nagy fókusz-elem.
+□ Mindenhol ugyanaz a fejléc-pattern (🌳 / progress / 🔊).
+□ Egyetlen radius-érték (22 px) látható a kártyákon és gombokon.
+□ Egyetlen árnyék-erősség látható.
+□ Egyetlen font (Fredoka), csak 500/600/700 súlyokban.
+□ Érintési zónák ≥ 96 px primary, ≥ 56 px ikon.
+□ Nincs fehér drop-shadow szöveg színes háttéren.
+□ A round-end nem egy elhagyatott képernyő, hanem visszatérés a kertbe.
+
+Ha valamit nem értesz, vagy a meglévő logika sérülne, állj meg és kérdezz.</div>
+</section>
+
+<!-- ═════════════════════ 12 · KÍVÜLÁLLÓ JAVASLATOK ═════════════════════ -->
+<section id="kivul">
+  <div class="sec-head">
+    <div class="sec-num">12</div>
+    <h2>Kívülálló javaslatok<span class="sub">Nem kérted, csak megjegyzés — ha érdekel, döntsd el külön</span></h2>
+  </div>
+
+  <ul>
+    <li><strong>Felolvasás-gomb mindig ugyanazon a helyen</strong>. Most ahol „Mondd újra"
+    van, az random helyen ül (matek-nál nincs, olvasásnál van). Ha mindenhol jobb-felső
+    pille = „Újra hallom", akkor 5 éves intuitív lesz.</li>
+    <li><strong>Hibakezelés visszaadása vizuálisan</strong>. A piros shake jó, de a
+    helyes válasz <em>nem mindig elég látható</em> (a meglévő green-500 bg + scale).
+    Javasolt: helyes válasz után 600 ms-ig <em>marad</em> zölden a gomb, mielőtt
+    tovább lép — így a gyerek lássa, ki mit nyomott meg.</li>
+    <li><strong>Kabala-mini a feladat-képernyőn — ha mégis akarod</strong>: tedd a
+    fehér tartalom-card jobb alsó sarkába, kis méretben (40 px), és <em>ő</em> reagáljon
+    helyes válaszra (1 frame thumbs-up). Most a fejlécben ül és semmit nem csinál.</li>
+    <li><strong>Subitizing tárgy-pozíció determinizmus</strong>. Most a tárgyak
+    pozíciója minden render-en random. Ha a feladat ugyanaz marad (pl. helyes válasz után
+    késleltetés), véletlen pozíciók nem cserélődnek le. Ez 5 évesnek zavaró: úgy érzi
+    „elmozdult a kérdés". Javaslat: <code>useMemo</code> a pozíciókra a task-id függvényében.</li>
+    <li><strong>S Pen optimalizáció írás-modulban</strong>. Az S6 Lite jön S Pen-nel.
+    A <code>Pointer Events</code> már támogatja a nyomásérzékenységet (<code>e.pressure</code>);
+    érdemes a vonal-vastagságot ennek függvényében finomítani — 5 éves lányom is örülni
+    fog a „valódi tollas" érzésnek.</li>
+    <li><strong>Sötét mód NE legyen.</strong> 5 éves felhasználónak nincs rá szüksége,
+    a kerti metafora pont a fény világához kötődik. Ezt csak azért jelzem, mert PWA-knál
+    sokszor automatikusan kerül be — itt explicit ne tedd be.</li>
+  </ul>
+</section>
+
+<div class="footer">
+  <span>pankaLearn · redesign v1</span>
+  <span>2026.06.09</span>
+</div>
+
+</div><!-- /.page -->
+</body>
+</html>

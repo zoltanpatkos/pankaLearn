@@ -13,11 +13,11 @@ interface Props {
 
 type TabId = WardrobeCategory
 
-const TABS: { id: TabId; label: string; emoji: string }[] = [
-  { id: 'outfit',    label: 'Ruha',       emoji: '👗' },
-  { id: 'hair',      label: 'Haj',        emoji: '💇' },
-  { id: 'accessory', label: 'Kiegészítő', emoji: '✨' },
-  { id: 'footwear',  label: 'Lábbeli',    emoji: '👠' },
+const TABS: { id: TabId; label: string }[] = [
+  { id: 'outfit',    label: '👗 Ruha' },
+  { id: 'hair',      label: '💇 Haj' },
+  { id: 'accessory', label: '✨ Extra' },
+  { id: 'footwear',  label: '👠 Cipő' },
 ]
 
 export function Wardrobe({ wardrobeState, onBack, onEquip }: Props): JSX.Element {
@@ -29,70 +29,78 @@ export function Wardrobe({ wardrobeState, onBack, onEquip }: Props): JSX.Element
 
   const { equipped, unlockedItems } = wardrobeState
 
+  const EQUIP_PRAISES = [
+    'De szép vagy!',
+    'Ezért megdolgoztál!',
+    'Igazán ügyes voltál!',
+    'Megérte tanulni!',
+  ]
+
   const handleEquip = (itemId: string, category: WardrobeCategory, isLocked: boolean): void => {
     if (isLocked) return
     onEquip(itemId, category)
-    speak('De szép vagy!')
+    speak(EQUIP_PRAISES[Math.floor(Math.random() * EQUIP_PRAISES.length)])
   }
 
   const visibleItems = WARDROBE_ITEMS.filter(i => i.category === activeTab)
 
   return (
-    <div className="relative w-screen h-screen overflow-hidden select-none bg-gradient-to-br from-violet-100 via-fuchsia-50 to-pink-100">
+    <div className="relative w-screen h-screen overflow-hidden select-none bg-gradient-to-b from-[#f5f3ff] to-[#fce7f3]">
 
-      {/* ── Decorative background circles ── */}
-      <div className="absolute top-[-60px] right-[-60px] w-56 h-56 rounded-full bg-purple-200 opacity-40" />
-      <div className="absolute bottom-[-40px] left-[-40px] w-44 h-44 rounded-full bg-pink-200 opacity-40" />
-
-      {/* ── Header ── */}
-      <div className="absolute top-0 left-0 right-0 h-16 flex items-center px-4 gap-3 bg-white/50 backdrop-blur-sm border-b border-white/60 z-10">
+      {/* Header */}
+      <div className="absolute top-0 left-0 right-0 h-16 flex items-center px-4 gap-3 z-10">
         <button
           onClick={onBack}
-          className="bg-white/80 active:bg-white rounded-2xl px-4 py-2 text-purple-900 font-bold text-lg shadow border-2 border-white/60 transition-transform active:scale-95"
+          style={{ boxShadow: 'var(--sh-1)' }}
+          className="w-14 h-14 rounded-full bg-white/85 flex items-center justify-center text-2xl flex-shrink-0 active:scale-90 transition-transform"
+          aria-label="Vissza a kertbe"
         >
-          ← Kert
+          🌳
         </button>
-        <h1 className="text-2xl font-bold text-purple-900 flex-1 text-center pr-16">
-          👗 Ruhatár
+        <h1 className="flex-1 text-center text-[20px] font-bold text-violet-800">
+          👗 Panka szekrénye
         </h1>
+        <div className="w-14 h-14 flex-shrink-0" />
       </div>
 
-      {/* ── Main area (below header) ── */}
-      <div className="absolute top-16 left-0 right-0 bottom-0 flex">
+      {/* Body below header */}
+      <div className="absolute top-16 left-0 right-0 bottom-0 flex flex-col">
 
-        {/* ── Left: Avatar preview ── */}
-        <div className="w-[38%] flex flex-col items-center justify-center gap-4 px-4">
-          <div className="w-48 h-[340px] drop-shadow-2xl">
+        {/* Avatar zone — upper 38% */}
+        <div className="relative flex-none h-[38%] flex items-end justify-center pb-3">
+          <div
+            className="absolute bottom-4 left-1/2 -translate-x-1/2 w-36 h-6 rounded-full"
+            style={{ background: 'radial-gradient(ellipse, rgba(167,139,250,0.4), transparent 70%)' }}
+          />
+          <div className="w-[130px] h-[250px] drop-shadow-lg">
             <PankaAvatarDressable equipped={equipped} />
           </div>
-          <p className="text-purple-700 font-semibold text-base text-center">Panka</p>
         </div>
 
-        {/* ── Right: Tabs + Grid ── */}
-        <div className="flex-1 flex flex-col pt-3 pb-4 pr-4 gap-3">
+        {/* Tabs + grid */}
+        <div className="flex-1 flex flex-col px-4 pb-4 gap-2 min-h-0">
 
           {/* Category tabs */}
-          <div className="flex gap-2">
+          <div className="flex-none grid grid-cols-4 gap-1.5">
             {TABS.map(tab => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
                 className={[
-                  'flex-1 flex items-center justify-center gap-1.5 rounded-2xl py-3.5 font-bold text-base transition-transform active:scale-95 shadow-lg border-2',
+                  'py-[9px] rounded-[14px] text-[12px] font-semibold text-center transition-colors active:scale-95',
                   activeTab === tab.id
-                    ? 'bg-purple-500 text-white border-purple-400 shadow-purple-200'
-                    : 'bg-white/80 text-purple-800 border-purple-100',
+                    ? 'bg-violet-500 text-white'
+                    : 'bg-white/80 text-violet-800',
                 ].join(' ')}
               >
-                <span className="text-2xl leading-none">{tab.emoji}</span>
-                <span>{tab.label}</span>
+                {tab.label}
               </button>
             ))}
           </div>
 
           {/* Items grid */}
-          <div className="flex-1 overflow-y-auto">
-            <div className="grid grid-cols-3 gap-3 pb-2">
+          <div className="flex-1 overflow-y-auto min-h-0">
+            <div className="grid grid-cols-6 gap-2">
               {visibleItems.map(item => {
                 const isLocked   = !unlockedItems.includes(item.id)
                 const isEquipped = equipped[item.category] === item.id
@@ -100,29 +108,40 @@ export function Wardrobe({ wardrobeState, onBack, onEquip }: Props): JSX.Element
                   <button
                     key={item.id}
                     onClick={() => handleEquip(item.id, item.category, isLocked)}
+                    disabled={isLocked}
+                    style={{
+                      borderRadius: '12px',
+                      boxShadow: isEquipped
+                        ? '0 8px 18px -10px rgba(139,92,246,.6)'
+                        : isLocked ? 'none' : 'var(--sh-1)',
+                    }}
                     className={[
-                      'relative flex flex-col items-center justify-center gap-2 rounded-3xl py-4 px-3',
-                      'border-4 shadow-lg transition-transform active:scale-95',
+                      'relative aspect-square flex flex-col items-center justify-center gap-0.5 transition-transform active:scale-90',
                       isEquipped
-                        ? 'bg-purple-500 border-purple-400 shadow-purple-300'
-                        : 'bg-white/90 border-purple-100',
-                      isLocked ? 'opacity-50' : '',
+                        ? 'bg-violet-500'
+                        : isLocked
+                          ? 'bg-[#f5f3ff] opacity-70'
+                          : 'bg-white',
                     ].join(' ')}
                   >
-                    <span className="text-5xl leading-none">{item.emoji}</span>
-                    <span className={[
-                      'text-sm font-bold leading-tight text-center',
-                      isEquipped ? 'text-white' : 'text-purple-900',
-                    ].join(' ')}>
-                      {item.name}
-                    </span>
-                    {isLocked && (
-                      <div className="absolute inset-0 rounded-[1.4rem] flex items-center justify-center">
-                        <span className="text-3xl drop-shadow">🔒</span>
-                      </div>
-                    )}
-                    {isEquipped && (
-                      <span className="absolute top-2 left-2.5 text-xl font-black text-white drop-shadow">✓</span>
+                    {isLocked ? (
+                      <>
+                        <span className="text-[26px] leading-none opacity-20 grayscale">{item.emoji}</span>
+                        <span className="absolute top-0.5 right-1 text-[11px]">🔒</span>
+                      </>
+                    ) : (
+                      <>
+                        <span className="text-[26px] leading-none">{item.emoji}</span>
+                        <span className={[
+                          'text-[9px] font-bold leading-tight text-center px-0.5 uppercase tracking-wide',
+                          isEquipped ? 'text-white' : 'text-violet-800',
+                        ].join(' ')}>
+                          {item.name}
+                        </span>
+                        {isEquipped && (
+                          <span className="absolute top-[3px] left-[5px] text-[10px] font-bold text-white">✓</span>
+                        )}
+                      </>
                     )}
                   </button>
                 )

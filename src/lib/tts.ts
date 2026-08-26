@@ -200,8 +200,39 @@ const ENGLISH_PRAISES = [
   'Amazing!', 'Awesome!', 'Fantastic!', 'Brilliant!', 'You did it!', 'Wow!', 'Yes!',
 ]
 
+export function speakEnglishTwice(text: string): void {
+  if (_muted) return
+  window.speechSynthesis.cancel()
+
+  const doSpeak = async (): Promise<void> => {
+    const voice = getEnglishVoice()
+    const say = (): Promise<void> => new Promise(resolve => {
+      const u = makeU(text, 0.8, voice, 'en-GB')
+      u.onend = () => resolve()
+      window.speechSynthesis.speak(u)
+    })
+    await say()
+    if (_muted) return
+    await delay(500)
+    if (_muted) return
+    await say()
+    if (!_muted) silentPad(voice)
+  }
+
+  if (window.speechSynthesis.getVoices().length > 0) {
+    doSpeak()
+  } else {
+    window.speechSynthesis.addEventListener('voiceschanged', doSpeak, { once: true })
+  }
+}
+
 export function speakEnglishPraise(): void {
   speakEnglish(ENGLISH_PRAISES[Math.floor(Math.random() * ENGLISH_PRAISES.length)])
+}
+
+export function speakEnglishSuccess(word: string): void {
+  const praise = ENGLISH_PRAISES[Math.floor(Math.random() * ENGLISH_PRAISES.length)]
+  speakEnglish(`Yes! ${word}! ${praise}`)
 }
 
 export function speakBilingual(english: string, hungarian: string): void {

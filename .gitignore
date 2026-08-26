@@ -8,6 +8,10 @@ dev-dist/
 # Local HTTPS certificates (never commit private keys)
 *.pem
 
+# Environment secrets — never commit
+.env
+.env.local
+
 # Editor / OS
 .DS_Store
 Thumbs.db

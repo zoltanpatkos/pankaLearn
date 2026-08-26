@@ -17,32 +17,40 @@ export function MascotConfirm({ mascotId, onConfirm, onBack }: Props) {
   }, [mascotId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
-    <div className={`min-h-screen bg-gradient-to-b ${mascot.cardBg} flex flex-col items-center justify-center p-8 gap-6`}>
-      <h1 className="text-4xl lg:text-5xl font-bold text-white drop-shadow-lg text-center">
-        Biztos ezt választod? 🤔
-      </h1>
-
-      <div className="w-44 h-44 lg:w-56 lg:h-56">
+    <div
+      className="min-h-screen flex flex-col items-center justify-center gap-6 px-8"
+      style={{ background: '#f0f9ff' }}
+    >
+      {/* Large illustration */}
+      <div className="w-[180px] h-[180px]">
         <Illustration />
       </div>
 
+      {/* Text */}
       <div className="text-center">
-        <p className="text-white font-bold text-3xl drop-shadow">{mascot.name}</p>
-        <p className="text-white/80 text-xl mt-1">{mascot.animal}</p>
-        <p className="text-white font-semibold text-xl mt-3">„{mascot.catchphrase}"</p>
+        <h1 className="text-[28px] font-bold text-[#0c4a6e]">
+          Ő legyen a barátod?
+        </h1>
+        <p className="text-[20px] font-bold text-[#0c4a6e] mt-1">{mascot.name}</p>
+        <p className="text-[14px] font-medium text-[#475569] mt-0.5" style={{ opacity: 0.7 }}>
+          {mascot.animal}
+        </p>
       </div>
 
+      {/* Primary CTA */}
       <button
         onClick={onConfirm}
-        className="bg-white text-purple-700 font-bold text-3xl py-6 px-16 rounded-3xl shadow-2xl active:scale-95 transition-transform min-h-[80px]"
+        style={{ borderRadius: '22px', boxShadow: 'var(--sh-1)' }}
+        className="w-full max-w-xs bg-violet-600 active:bg-violet-500 active:scale-95 text-white font-bold text-[22px] py-6 transition-transform"
       >
-        Igen! ✅
+        Igen, ő! ✅
       </button>
 
-      {/* Subtle back option — not prominent, to discourage accidental changes */}
+      {/* Back link */}
       <button
         onClick={onBack}
-        className="text-white/65 text-lg py-3 px-6 rounded-xl active:text-white transition-colors"
+        className="text-sky-700 text-[16px] font-medium py-2 px-4 active:opacity-60 transition-opacity"
+        style={{ opacity: 0.65 }}
       >
         ← Másik barátot választok
       </button>

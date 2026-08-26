@@ -5,7 +5,13 @@ import { speak, speakChained, speakSyllabified } from '../lib/tts'
 import { unlockAudio } from '../lib/audio'
 import { RewardOverlay } from '../components/RewardOverlay'
 import { useRewards } from '../hooks/useRewards'
+import { ModuleSelect } from '../components/ModuleSelect'
+import { TaskShell } from '../components/TaskShell'
+import { AnswerButton } from '../components/AnswerButton'
 import { READING_WORDS, type WordEntry } from '../data/readingWords'
+import { RHYME_PAIRS, type RhymePair } from '../data/rhymeData'
+import { LETTER_BUILD_WORDS, type LetterBuildWord } from '../data/letterBuildData'
+import { selectNextItem, recordAttempt, getItemWeight } from '../lib/adaptive'
 
 interface Props {
   mascotId: MascotId
@@ -14,14 +20,20 @@ interface Props {
   onRoundComplete: (unlockedItemId: string | null) => void
 }
 
-type GameType = 'clapper' | 'assembler'
-type Phase = 'select' | 'game' | 'round-end'
+type GameType = 'clapper' | 'assembler' | 'rhyme' | 'wordpic' | 'letterbuild'
+type Phase = 'select' | 'game'
 
 const TASKS_PER_ROUND = 5
-const STREAK_REWARD = 3
+const STREAK_REWARD   = 3
 
-const LEVEL1_ALL      = READING_WORDS.filter(w => w.level === 1)
-const LEVEL1_MULTI    = LEVEL1_ALL.filter(w => w.syllables.length >= 2)
+const LEVEL1_ALL   = READING_WORDS.filter(w => w.level === 1)
+const LEVEL1_MULTI = LEVEL1_ALL.filter(w => w.syllables.length >= 2)
+
+const LETTER_SOUNDS: Record<string, string> = {
+  F: 'Fff', S: 'Sss', M: 'Mmm', N: 'Nnn', L: 'Lll', V: 'Vvv', R: 'Rrr',
+  T: 'T', P: 'P', K: 'K', H: 'H', B: 'B',
+  A: 'Aaa', E: 'Eee', O: 'Ooo',
+}
 
 function shuffle<T>(arr: T[]): T[] {
   const a = [...arr]
@@ -32,30 +44,49 @@ function shuffle<T>(arr: T[]): T[] {
   return a
 }
 
-function pickRandom<T>(arr: T[]): T {
-  return arr[Math.floor(Math.random() * arr.length)]
-}
-
-interface CardState { syllable: string; placed: boolean }
+interface CardState    { syllable: string; placed: boolean }
+interface RhymeOption  { word: string; emoji: string; syllables: string[]; isCorrect: boolean }
+interface WordPicOption { entry: WordEntry; isCorrect: boolean }
+interface LetterSlot   { letter: string | null; status: 'empty' | 'correct' | 'wrong' }
+interface LetterCard   { letter: string; placed: boolean }
 
 export function ReadingModule({ mascotId, lockedWardrobeItems, onBack, onRoundComplete }: Props): JSX.Element {
-  const mascot = MASCOTS.find(m => m.id === mascotId) ?? MASCOTS[0]
+  const mascot      = MASCOTS.find(m => m.id === mascotId) ?? MASCOTS[0]
   const Illustration = mascot.Illustration
 
   const [phase, setPhase]       = useState<Phase>('select')
   const [gameType, setGameType] = useState<GameType>('clapper')
   const [taskIndex, setTaskIndex] = useState(0)
-  const [task, setTask]         = useState<WordEntry | null>(null)
   const [streak, setStreak]     = useState(0)
 
   // Clapper state
+  const [task, setTask]               = useState<WordEntry | null>(null)
   const [selectedCount, setSelectedCount] = useState<number | null>(null)
   const answering = useRef(false)
 
   // Assembler state
-  const [cards, setCards]           = useState<CardState[]>([])
-  const [assembled, setAssembled]   = useState<string[]>([])
+  const [cards, setCards]                     = useState<CardState[]>([])
+  const [assembled, setAssembled]             = useState<string[]>([])
   const [assemblerResult, setAssemblerResult] = useState<'idle' | 'correct' | 'wrong'>('idle')
+
+  // Rhyme state
+  const [rhymeTask, setRhymeTask]       = useState<RhymePair | null>(null)
+  const [rhymeOptions, setRhymeOptions] = useState<RhymeOption[]>([])
+  const [rhymeSelected, setRhymeSelected] = useState<number | null>(null)
+  const [rhymeResult, setRhymeResult]   = useState<'idle' | 'correct' | 'wrong'>('idle')
+
+  // Word-picture state
+  const [wordPicTarget, setWordPicTarget]   = useState<WordEntry | null>(null)
+  const [wordPicOptions, setWordPicOptions] = useState<WordPicOption[]>([])
+  const [wordPicSelected, setWordPicSelected] = useState<number | null>(null)
+  const [wordPicResult, setWordPicResult]   = useState<'idle' | 'correct' | 'wrong'>('idle')
+
+  // Letter-build state
+  const [letterBuildWord, setLetterBuildWord]         = useState<LetterBuildWord | null>(null)
+  const [letterSlots, setLetterSlots]                 = useState<LetterSlot[]>([])
+  const [letterCards, setLetterCards]                 = useState<LetterCard[]>([])
+  const [letterBuildScaffold, setLetterBuildScaffold] = useState<1 | 2 | 3>(2)
+  const letterBuildLocked = useRef(false)
 
   const { activeReward, rewardKey, triggerMicro, triggerSmall, triggerMedium, triggerError } = useRewards({
     onTreeLevelUp: () => {},
@@ -81,113 +112,110 @@ export function ReadingModule({ mascotId, lockedWardrobeItems, onBack, onRoundCo
     setTimeout(() => speakSyllabified(t.syllables, t.word), 1400)
   }
 
-  // ── Handlers ──────────────────────────────────────────────────────────────
+  const startRhymeTask = (pair: RhymePair): void => {
+    setRhymeTask(pair)
+    setRhymeOptions(shuffle([
+      { word: pair.correct, emoji: pair.correctEmoji, syllables: pair.correctSyllables, isCorrect: true },
+      { word: pair.distractors[0].word, emoji: pair.distractors[0].emoji, syllables: pair.distractors[0].syllables, isCorrect: false },
+      { word: pair.distractors[1].word, emoji: pair.distractors[1].emoji, syllables: pair.distractors[1].syllables, isCorrect: false },
+    ]))
+    setRhymeSelected(null)
+    setRhymeResult('idle')
+    speak('Mi rímel erre?')
+    setTimeout(() => speakSyllabified(pair.promptSyllables, pair.prompt), 1000)
+  }
+
+  const startWordPicTask = (target: WordEntry): void => {
+    const others   = shuffle(LEVEL1_ALL.filter(w => w.word !== target.word))
+    const sameSyl  = others.filter(w => w.syllables.length === target.syllables.length)
+    const diffSyl  = others.filter(w => w.syllables.length !== target.syllables.length)
+    const [d1, d2] = [...sameSyl, ...diffSyl]
+    setWordPicTarget(target)
+    setWordPicOptions(shuffle([
+      { entry: target, isCorrect: true },
+      { entry: d1,     isCorrect: false },
+      { entry: d2,     isCorrect: false },
+    ]))
+    setWordPicSelected(null)
+    setWordPicResult('idle')
+    speak('Melyik szó illik a képhez?')
+    setTimeout(() => speakSyllabified(target.syllables, target.word), 1200)
+  }
+
+  const startLetterBuildTask = (word: LetterBuildWord): void => {
+    const weight = getItemWeight('reading.letterBuild', word.word)
+    const scaffold: 1 | 2 | 3 = weight >= 2.0 ? 1 : weight >= 0.7 ? 2 : 3
+    setLetterBuildWord(word)
+    setLetterBuildScaffold(scaffold)
+    setLetterSlots(word.letters.map(() => ({ letter: null, status: 'empty' as const })))
+    setLetterCards(shuffle([
+      ...word.letters.map(l => ({ letter: l, placed: false })),
+      ...word.distractors.map(l => ({ letter: l, placed: false })),
+    ]))
+    letterBuildLocked.current = false
+    speakChained([...word.letterSounds, word.word])
+  }
+
+  // ── Shared ────────────────────────────────────────────────────────────────
+
+  const callRoundComplete = (): void => {
+    unlockAudio()
+    const unlocked = lockedWardrobeItems.length > 0
+      ? lockedWardrobeItems[Math.floor(Math.random() * lockedWardrobeItems.length)]
+      : null
+    if (unlocked) speak('Új ruha vár rád a szekrényben!')
+    onRoundComplete(unlocked)
+  }
+
+  const advance = (correct: boolean, tt: string, key: string, delay: number, nextTask: () => void): void => {
+    recordAttempt(tt, key, correct)
+    if (correct) {
+      const newStreak = streak + 1
+      setStreak(newStreak)
+      if (newStreak >= STREAK_REWARD && newStreak % STREAK_REWARD === 0) triggerSmall()
+      else triggerMicro()
+    } else {
+      setStreak(0)
+      triggerError()
+    }
+    if (!correct) return
+    const nextIdx = taskIndex + 1
+    if (nextIdx >= TASKS_PER_ROUND) {
+      setTimeout(() => { triggerMedium(); callRoundComplete() }, delay)
+    } else {
+      setTimeout(() => { setTaskIndex(nextIdx); nextTask() }, delay)
+    }
+  }
 
   const handleStart = (gt: GameType): void => {
     unlockAudio()
     setGameType(gt)
     setTaskIndex(0)
     setStreak(0)
-    const t = pickRandom(gt === 'clapper' ? LEVEL1_ALL : LEVEL1_MULTI)
     setPhase('game')
-    if (gt === 'clapper') startClapperTask(t, 0)
-    else startAssemblerTask(t, 0)
-  }
-
-  const handleClapperAnswer = (n: number): void => {
-    if (answering.current || selectedCount !== null || !task) return
-    answering.current = true
-    setSelectedCount(n)
-
-    if (n === task.syllables.length) {
-      const newStreak = streak + 1
-      setStreak(newStreak)
-      if (newStreak >= STREAK_REWARD && newStreak % STREAK_REWARD === 0) triggerSmall()
-      else triggerMicro()
-
-      const nextIdx = taskIndex + 1
-      if (nextIdx >= TASKS_PER_ROUND) {
-        setTimeout(() => { triggerMedium(); setPhase('round-end') }, 900)
-      } else {
-        setTimeout(() => {
-          setTaskIndex(nextIdx)
-          startClapperTask(pickRandom(LEVEL1_ALL), nextIdx)
-        }, 900)
-      }
+    if (gt === 'clapper') {
+      startClapperTask(selectNextItem('reading.syllableCount', LEVEL1_ALL, w => w.word), 0)
+    } else if (gt === 'assembler') {
+      startAssemblerTask(selectNextItem('reading.syllableAssembly', LEVEL1_MULTI, w => w.word), 0)
+    } else if (gt === 'rhyme') {
+      startRhymeTask(selectNextItem('reading.rhyme', RHYME_PAIRS, p => p.prompt))
+    } else if (gt === 'wordpic') {
+      startWordPicTask(selectNextItem('reading.wordPicture', LEVEL1_ALL, w => w.word))
     } else {
-      setStreak(0)
-      triggerError()
-      setTimeout(() => {
-        setSelectedCount(null)
-        answering.current = false
-      }, 1400)
-    }
-  }
-
-  const handleCardTap = (cardIdx: number): void => {
-    if (assemblerResult !== 'idle' || !task || cards[cardIdx].placed) return
-
-    const newAssembled = [...assembled, cards[cardIdx].syllable]
-    setCards(prev => prev.map((c, i) => i === cardIdx ? { ...c, placed: true } : c))
-    setAssembled(newAssembled)
-
-    if (newAssembled.length < task.syllables.length) return
-
-    const isCorrect = newAssembled.every((s, i) => s === task.syllables[i])
-    if (isCorrect) {
-      setAssemblerResult('correct')
-      const newStreak = streak + 1
-      setStreak(newStreak)
-      if (newStreak >= STREAK_REWARD && newStreak % STREAK_REWARD === 0) triggerSmall()
-      else triggerMicro()
-      speak(task.word)
-
-      const nextIdx = taskIndex + 1
-      if (nextIdx >= TASKS_PER_ROUND) {
-        setTimeout(() => { triggerMedium(); setPhase('round-end') }, 1200)
-      } else {
-        setTimeout(() => {
-          setTaskIndex(nextIdx)
-          startAssemblerTask(pickRandom(LEVEL1_MULTI), nextIdx)
-        }, 1200)
-      }
-    } else {
-      setAssemblerResult('wrong')
-      setStreak(0)
-      triggerError()
-      const resetSyllables = [...task.syllables]
-      setTimeout(() => {
-        setCards(shuffle(resetSyllables.map(s => ({ syllable: s, placed: false }))))
-        setAssembled([])
-        setAssemblerResult('idle')
-      }, 1400)
+      startLetterBuildTask(selectNextItem('reading.letterBuild', LETTER_BUILD_WORDS, w => w.word))
     }
   }
 
   const handleRepeat = (): void => {
-    if (!task) return
     unlockAudio()
-    speakSyllabified(task.syllables, task.word)
-  }
-
-  const handleRoundEnd = (again: boolean): void => {
-    unlockAudio()
-    const unlocked = lockedWardrobeItems.length > 0
-      ? lockedWardrobeItems[Math.floor(Math.random() * lockedWardrobeItems.length)]
-      : null
-    onRoundComplete(unlocked)
-    if (unlocked) speak('Új ruha vár rád a szekrényben!')
-
-    if (again) {
-      setTaskIndex(0)
-      setStreak(0)
-      const pool = gameType === 'clapper' ? LEVEL1_ALL : LEVEL1_MULTI
-      const t = pickRandom(pool)
-      setPhase('game')
-      if (gameType === 'clapper') startClapperTask(t, 0)
-      else startAssemblerTask(t, 0)
-    } else {
-      onBack()
+    if ((gameType === 'clapper' || gameType === 'assembler') && task) {
+      speakSyllabified(task.syllables, task.word)
+    } else if (gameType === 'rhyme' && rhymeTask) {
+      speakSyllabified(rhymeTask.promptSyllables, rhymeTask.prompt)
+    } else if (gameType === 'wordpic' && wordPicTarget) {
+      speakSyllabified(wordPicTarget.syllables, wordPicTarget.word)
+    } else if (gameType === 'letterbuild' && letterBuildWord) {
+      speakChained([...letterBuildWord.letterSounds, letterBuildWord.word])
     }
   }
 
@@ -197,266 +225,400 @@ export function ReadingModule({ mascotId, lockedWardrobeItems, onBack, onRoundCo
     setTimeout(onBack, 600)
   }
 
-  // ── Progress dots (shared) ────────────────────────────────────────────────
+  // ── Clapper handler ───────────────────────────────────────────────────────
 
-  const ProgressDots = (): JSX.Element => (
-    <div className="flex gap-2 flex-1 justify-center">
-      {Array.from({ length: TASKS_PER_ROUND }, (_, i) => (
-        <div
-          key={i}
-          className={[
-            'w-7 h-7 rounded-full border-2 transition-all duration-300',
-            i < taskIndex  ? 'bg-blue-400 border-blue-300 scale-110' :
-            i === taskIndex ? 'bg-blue-500 border-blue-400 scale-110' : 'bg-gray-200 border-gray-300',
-          ].join(' ')}
-        />
-      ))}
-    </div>
-  )
+  const handleClapperAnswer = (n: number): void => {
+    if (answering.current || selectedCount !== null || !task) return
+    answering.current = true
+    setSelectedCount(n)
+    const isCorrect = n === task.syllables.length
+    advance(isCorrect, 'reading.syllableCount', task.word, 900,
+      () => startClapperTask(selectNextItem('reading.syllableCount', LEVEL1_ALL, w => w.word), taskIndex + 1))
+    if (!isCorrect) {
+      setTimeout(() => { setSelectedCount(null); answering.current = false }, 1400)
+    }
+  }
+
+  // ── Assembler handler ─────────────────────────────────────────────────────
+
+  const handleCardTap = (cardIdx: number): void => {
+    if (assemblerResult !== 'idle' || !task || cards[cardIdx].placed) return
+    const newAssembled = [...assembled, cards[cardIdx].syllable]
+    setCards(prev => prev.map((c, i) => i === cardIdx ? { ...c, placed: true } : c))
+    setAssembled(newAssembled)
+    if (newAssembled.length < task.syllables.length) return
+
+    const isCorrect = newAssembled.every((s, i) => s === task.syllables[i])
+    setAssemblerResult(isCorrect ? 'correct' : 'wrong')
+    if (isCorrect) speak(task.word)
+    advance(isCorrect, 'reading.syllableAssembly', task.word, 1200,
+      () => startAssemblerTask(selectNextItem('reading.syllableAssembly', LEVEL1_MULTI, w => w.word), taskIndex + 1))
+    if (!isCorrect) {
+      setTimeout(() => {
+        setCards(shuffle(task.syllables.map(s => ({ syllable: s, placed: false }))))
+        setAssembled([])
+        setAssemblerResult('idle')
+      }, 1400)
+    }
+  }
+
+  // ── Rhyme handler ─────────────────────────────────────────────────────────
+
+  const handleRhymeTap = (idx: number): void => {
+    if (rhymeResult !== 'idle' || !rhymeTask) return
+    setRhymeSelected(idx)
+    const opt = rhymeOptions[idx]
+    if (opt.isCorrect) {
+      setRhymeResult('correct')
+      speakChained([rhymeTask.prompt, rhymeTask.correct, 'Rímelnek!'])
+      advance(true, 'reading.rhyme', rhymeTask.prompt, 2200,
+        () => startRhymeTask(selectNextItem('reading.rhyme', RHYME_PAIRS, p => p.prompt)))
+    } else {
+      setRhymeResult('wrong')
+      recordAttempt('reading.rhyme', rhymeTask.prompt, false)
+      setStreak(0)
+      triggerError()
+      speak('Ez nem rímel! Próbáld a másikat!')
+      setTimeout(() => { setRhymeSelected(null); setRhymeResult('idle') }, 1600)
+    }
+  }
+
+  // ── Letter-build handler ──────────────────────────────────────────────────
+
+  const handleLetterTap = (cardIdx: number): void => {
+    if (letterBuildLocked.current || !letterBuildWord) return
+    const card = letterCards[cardIdx]
+    if (card.placed) return
+
+    const nextSlotIdx = letterSlots.findIndex(s => s.letter === null)
+    if (nextSlotIdx === -1) return
+
+    const expectedLetter = letterBuildWord.letters[nextSlotIdx]
+
+    if (card.letter === expectedLetter) {
+      setLetterSlots(prev => prev.map((s, i) =>
+        i === nextSlotIdx ? { letter: card.letter, status: 'correct' as const } : s))
+      setLetterCards(prev => prev.map((c, i) => i === cardIdx ? { ...c, placed: true } : c))
+
+      if (nextSlotIdx === letterBuildWord.letters.length - 1) {
+        recordAttempt('reading.letterBuild', letterBuildWord.word, true)
+        const newStreak = streak + 1
+        setStreak(newStreak)
+        if (newStreak >= STREAK_REWARD && newStreak % STREAK_REWARD === 0) triggerSmall()
+        else triggerMicro()
+        speak(letterBuildWord.word)
+        const nextIdx = taskIndex + 1
+        if (nextIdx >= TASKS_PER_ROUND) {
+          setTimeout(() => { triggerMedium(); callRoundComplete() }, 1500)
+        } else {
+          setTimeout(() => {
+            setTaskIndex(nextIdx)
+            startLetterBuildTask(selectNextItem('reading.letterBuild', LETTER_BUILD_WORDS, w => w.word))
+          }, 1500)
+        }
+      }
+    } else {
+      letterBuildLocked.current = true
+      setLetterSlots(prev => prev.map((s, i) =>
+        i === nextSlotIdx ? { letter: card.letter, status: 'wrong' as const } : s))
+      recordAttempt('reading.letterBuild', letterBuildWord.word, false)
+      setStreak(0)
+      triggerError()
+      if (letterBuildScaffold === 2) {
+        speak(`${LETTER_SOUNDS[expectedLetter] ?? expectedLetter}... Ezt a hangot keresd!`)
+      } else if (letterBuildScaffold === 3) {
+        speak('Próbáld újra!')
+      }
+      setTimeout(() => {
+        setLetterSlots(prev => prev.map((s, i) =>
+          i === nextSlotIdx ? { letter: null, status: 'empty' } : s))
+        letterBuildLocked.current = false
+      }, 900)
+    }
+  }
+
+  // ── Word-picture handler ──────────────────────────────────────────────────
+
+  const handleWordPicTap = (idx: number): void => {
+    if (wordPicResult !== 'idle' || !wordPicTarget) return
+    setWordPicSelected(idx)
+    const opt = wordPicOptions[idx]
+    if (opt.isCorrect) {
+      setWordPicResult('correct')
+      speakSyllabified(wordPicTarget.syllables, wordPicTarget.word)
+      advance(true, 'reading.wordPicture', wordPicTarget.word, 1800,
+        () => startWordPicTask(selectNextItem('reading.wordPicture', LEVEL1_ALL, w => w.word)))
+    } else {
+      setWordPicResult('wrong')
+      recordAttempt('reading.wordPicture', wordPicTarget.word, false)
+      setStreak(0)
+      triggerError()
+      speak('Ez nem az! Nézd meg újra a képet!')
+      setTimeout(() => speakSyllabified(wordPicTarget.syllables, wordPicTarget.word), 1400)
+      setTimeout(() => { setWordPicSelected(null); setWordPicResult('idle') }, 2000)
+    }
+  }
 
   // ── SELECT ────────────────────────────────────────────────────────────────
 
   if (phase === 'select') {
     return (
-      <div className="relative w-screen h-screen overflow-hidden select-none bg-gradient-to-b from-blue-500 via-blue-400 to-sky-300 flex flex-col">
-        <div className="mx-3 mt-3 bg-white/90 rounded-2xl shadow-lg flex items-center px-3 py-2.5 gap-3">
-          <button
-            onClick={handleBack}
-            className="bg-blue-100 active:bg-blue-200 rounded-xl px-3 py-2 text-blue-900 font-bold text-base border border-blue-300 active:scale-95 transition-transform"
-          >
-            ← Kert
-          </button>
-          <h1 className="text-2xl font-black text-blue-800 drop-shadow-sm flex-1 text-center">
-            📚 Olvasás
-          </h1>
-        </div>
-
-        <div className="flex flex-col items-center justify-center flex-1 gap-8 px-8 pb-8">
-          <div className="w-36 h-36 drop-shadow-xl">
-            <Illustration />
-          </div>
-          <p className="text-white font-bold text-2xl text-center drop-shadow">
-            Melyik játékot választod?
-          </p>
-          <div className="flex gap-5 w-full max-w-sm">
-            <button
-              onClick={() => handleStart('clapper')}
-              className="flex-1 flex flex-col items-center gap-3 bg-yellow-400 active:bg-yellow-300 rounded-3xl py-6 shadow-2xl border-4 border-yellow-300 active:scale-95 transition-transform"
-            >
-              <span className="text-6xl leading-none">👏</span>
-              <span className="text-yellow-900 font-bold text-xl text-center">Tapsolj!</span>
-              <span className="text-yellow-800 text-sm text-center px-2">Hány részből áll?</span>
-            </button>
-            <button
-              onClick={() => handleStart('assembler')}
-              className="flex-1 flex flex-col items-center gap-3 bg-emerald-400 active:bg-emerald-300 rounded-3xl py-6 shadow-2xl border-4 border-emerald-300 active:scale-95 transition-transform"
-            >
-              <span className="text-6xl leading-none">🧩</span>
-              <span className="text-blue-900 font-bold text-xl text-center">Rakd össze!</span>
-              <span className="text-emerald-800 text-sm text-center px-2">Rakd össze!</span>
-            </button>
-          </div>
-        </div>
-      </div>
+      <ModuleSelect
+        hue="blue"
+        title="📚 Olvasás"
+        Illustration={Illustration}
+        cards={[
+          { emoji: '👏', label: 'Tapsolj!',     sublabel: 'Hány részből áll?',   onClick: () => handleStart('clapper') },
+          { emoji: '🧩', label: 'Rakd össze!',  sublabel: 'Illeszd a szótagot!', onClick: () => handleStart('assembler') },
+          { emoji: '🎵', label: 'Rímel!',       sublabel: 'Mi rímel erre?',      onClick: () => handleStart('rhyme') },
+          { emoji: '🔍', label: 'Melyik szó?',  sublabel: 'Koppints a szóra!',   onClick: () => handleStart('wordpic') },
+          { emoji: '🔤', label: 'Építsd!',      sublabel: 'Rakd ki a betűket!',  onClick: () => handleStart('letterbuild') },
+        ]}
+        onBack={handleBack}
+        onRepeat={() => speak('Melyik játékot választod?')}
+      />
     )
   }
-
-  // ── ROUND-END ─────────────────────────────────────────────────────────────
-
-  if (phase === 'round-end') {
-    return (
-      <div className="relative w-screen h-screen overflow-hidden select-none bg-gradient-to-b from-blue-600 to-sky-500 flex flex-col items-center justify-center gap-8 px-8">
-        <div className="relative flex items-center justify-center w-72 h-52">
-          <span className="absolute top-1 left-6 text-5xl select-none" style={{ animation: 'star-pop 0.7s ease-out 0.3s both' }}>⭐</span>
-          <span className="absolute top-2 right-6 text-4xl select-none" style={{ animation: 'star-pop 0.7s ease-out 0.5s both' }}>✨</span>
-          <span className="absolute bottom-1 left-10 text-4xl select-none" style={{ animation: 'star-pop 0.7s ease-out 0.6s both' }}>⭐</span>
-          <span className="absolute bottom-0 right-10 text-5xl select-none" style={{ animation: 'star-pop 0.7s ease-out 0.45s both' }}>✨</span>
-          <div className="text-[11rem] leading-none select-none" style={{ animation: 'star-pop 1s ease-out forwards', filter: 'drop-shadow(0 0 30px #60a5fa)' }}>🌻</div>
-        </div>
-        <p className="text-white font-bold text-3xl text-center drop-shadow-lg">
-          {mascot.name} szerint<br />fantasztikus voltál!
-        </p>
-        <div
-          className="w-40 h-40 drop-shadow-2xl"
-          style={{ animation: 'bounce-dance 0.5s ease-in-out infinite' }}
-        >
-          <Illustration />
-        </div>
-        <div className="flex flex-col gap-4 w-full max-w-xs">
-          <button
-            onClick={() => handleRoundEnd(true)}
-            className="bg-yellow-400 active:bg-yellow-300 active:scale-95 text-yellow-900 font-bold text-2xl rounded-3xl py-5 shadow-2xl border-4 border-yellow-300 transition-transform"
-          >
-            🔄 Még egy kör!
-          </button>
-          <button
-            onClick={() => handleRoundEnd(false)}
-            className="bg-white/30 active:bg-white/50 active:scale-95 text-white font-bold text-xl rounded-3xl py-4 shadow-xl border-4 border-white/40 transition-transform"
-          >
-            🌳 Vissza a kertbe
-          </button>
-        </div>
-        <RewardOverlay type={activeReward} rewardKey={rewardKey} mascotId={mascotId} />
-      </div>
-    )
-  }
-
-  if (!task) return <div className="w-screen h-screen bg-blue-500" />
 
   // ── CLAPPER ───────────────────────────────────────────────────────────────
 
-  if (gameType === 'clapper') {
+  if (gameType === 'clapper' && task) {
     return (
-      <div className="relative w-screen h-screen overflow-hidden select-none bg-gradient-to-b from-blue-500 via-blue-400 to-sky-300 flex flex-col">
-
-        <div className="mx-3 mt-3 bg-white/90 rounded-2xl shadow-lg flex items-center px-3 py-2.5 gap-3 flex-shrink-0">
-          <button
-            onClick={handleBack}
-            className="bg-blue-100 active:bg-blue-200 rounded-xl px-3 py-2 text-blue-900 font-bold text-base border border-blue-300 active:scale-95 transition-transform"
-          >
-            ← Kert
-          </button>
-          <ProgressDots />
-          <div className="w-11 h-11 rounded-xl overflow-hidden border-2 border-blue-100 shadow flex-shrink-0">
-            <Illustration />
-          </div>
-        </div>
-
-        <div className="flex-1 flex flex-col items-center justify-between py-2 px-4 min-h-0">
-
-          {/* Word display */}
-          <div className="flex flex-col items-center gap-2 flex-shrink-0">
+      <TaskShell hue="blue" progressIndex={taskIndex} total={TASKS_PER_ROUND} onBack={handleBack} onRepeat={handleRepeat}>
+        <div className="flex flex-col items-center justify-between h-full py-5 px-4">
+          <div className="flex flex-col items-center gap-3 flex-shrink-0">
             <span className="text-6xl leading-none">{task.emoji}</span>
-            <p className="text-white font-black text-3xl text-center tracking-widest drop-shadow-lg">
+            <p className="text-blue-900 font-bold text-3xl text-center tracking-widest">
               {task.syllables.join(' · ')}
             </p>
-            <p className="text-white/80 font-bold text-lg text-center drop-shadow">
-              Hány részből áll?
-            </p>
+            <p className="text-blue-700 font-semibold text-lg text-center">Hány részből áll?</p>
           </div>
-
-          {/* Repeat button */}
-          <button
-            onClick={handleRepeat}
-            className="bg-white/30 active:bg-white/50 active:scale-95 text-white font-bold text-lg rounded-2xl px-5 py-2 border-2 border-white/40 transition-transform shadow flex-shrink-0"
-          >
+          <button onClick={handleRepeat}
+            className="bg-gray-100 active:bg-gray-200 text-gray-600 font-semibold text-sm rounded-full px-5 py-2.5 active:scale-95 transition-transform flex-shrink-0">
             🔊 Mondd újra
           </button>
-
-          {/* Answer buttons */}
-          <div className="grid grid-cols-2 gap-2 w-full max-w-sm flex-shrink-0">
-            {[1, 2, 3, 4].map(n => {
-              const isSelected = selectedCount === n
-              const isCorrect  = n === task.syllables.length
-              let bg = 'bg-blue-500 active:bg-blue-600 border-blue-400'
-              if (isSelected && isCorrect)  bg = 'bg-green-500 border-green-400'
-              if (isSelected && !isCorrect) bg = 'bg-red-500 border-red-400'
-              const anim = isSelected && isCorrect  ? 'correct-answer 0.4s ease-out'
-                : isSelected && !isCorrect ? 'shake-no 0.5s ease-out' : 'none'
-              return (
-                <button
-                  key={n}
-                  onClick={() => handleClapperAnswer(n)}
-                  disabled={selectedCount !== null}
-                  style={{ animation: anim }}
-                  className={[
-                    'flex items-center justify-center rounded-3xl min-h-[80px] shadow-xl border-4',
-                    'transition-transform active:scale-90 duration-100',
-                    bg,
-                    selectedCount !== null && !isSelected ? 'opacity-50' : '',
-                  ].join(' ')}
-                >
-                  <span className="text-4xl font-black text-white leading-none">{n}</span>
-                </button>
-              )
-            })}
+          <div className="grid grid-cols-2 gap-3 w-full flex-shrink-0">
+            {[1, 2, 3, 4].map(n => (
+              <AnswerButton key={n} hue="blue"
+                state={selectedCount === n ? (n === task.syllables.length ? 'correct' : 'wrong') : 'idle'}
+                onClick={() => handleClapperAnswer(n)}
+                className={['flex items-center justify-center min-h-[80px]',
+                  selectedCount !== null && selectedCount !== n ? 'opacity-50' : ''].join(' ')}>
+                <span className="text-4xl font-bold leading-none">{n}</span>
+              </AnswerButton>
+            ))}
           </div>
         </div>
-
         <RewardOverlay type={activeReward} rewardKey={rewardKey} mascotId={mascotId} />
-      </div>
+      </TaskShell>
     )
   }
 
   // ── ASSEMBLER ─────────────────────────────────────────────────────────────
 
-  return (
-    <div className="relative w-screen h-screen overflow-hidden select-none bg-gradient-to-b from-blue-500 via-sky-400 to-blue-300 flex flex-col">
-
-      <div className="flex items-center px-4 pt-4 gap-3 flex-shrink-0">
-        <button
-          onClick={handleBack}
-          className="bg-white/80 active:bg-white rounded-2xl px-4 py-2.5 text-blue-900 font-bold text-lg shadow border-2 border-white/60 active:scale-95 transition-transform"
-        >
-          ← Kert
-        </button>
-        <ProgressDots />
-        <div className="w-12 h-12 rounded-2xl overflow-hidden border-2 border-white/50 shadow flex-shrink-0">
-          <Illustration />
-        </div>
-      </div>
-
-      <div className="flex-1 flex flex-col items-center justify-between py-3 px-4 min-h-0">
-
-        {/* Emoji + repeat */}
-        <div className="flex flex-col items-center gap-2 flex-shrink-0">
-          <span className="text-6xl leading-none">{task.emoji}</span>
-          <button
-            onClick={handleRepeat}
-            className="bg-white/30 active:bg-white/50 active:scale-95 text-white font-bold text-lg rounded-2xl px-5 py-2 border-2 border-white/40 transition-transform shadow"
-          >
-            🔊 Mondd újra
-          </button>
-        </div>
-
-        {/* Assembled slots */}
-        <div className="flex gap-2 justify-center flex-shrink-0">
-          {task.syllables.map((_, i) => (
-            <div
-              key={i}
-              style={{ animation: assemblerResult === 'wrong' && i < assembled.length ? 'shake-no 0.4s ease-out' : 'none' }}
-              className={[
-                'min-w-[64px] h-14 rounded-2xl border-4 flex items-center justify-center transition-all duration-200',
-                i < assembled.length
-                  ? assemblerResult === 'correct'
-                    ? 'bg-green-400 border-green-300 shadow-lg'
-                    : assemblerResult === 'wrong'
-                      ? 'bg-red-400 border-red-300'
-                      : 'bg-white border-white/80 shadow-lg'
-                  : 'bg-white/20 border-white/40 border-dashed',
-              ].join(' ')}
-            >
-              {i < assembled.length && (
-                <span className="text-2xl font-black text-blue-900">{assembled[i]}</span>
-              )}
-            </div>
-          ))}
-        </div>
-
-        {/* Syllable cards */}
-        <div className="flex gap-3 flex-wrap justify-center flex-shrink-0">
-          {cards.map((card, i) => (
-            <button
-              key={i}
-              onClick={() => handleCardTap(i)}
-              disabled={card.placed || assemblerResult !== 'idle'}
-              className={[
-                'min-w-[80px] h-20 rounded-3xl border-4 flex items-center justify-center shadow-xl',
-                'transition-all duration-200',
-                card.placed
-                  ? 'bg-white/10 border-white/10 opacity-20 cursor-default'
-                  : 'bg-white border-white/80 active:bg-gray-100 active:scale-90',
-              ].join(' ')}
-            >
-              {!card.placed && (
-                <span className="text-2xl font-black text-blue-900">{card.syllable}</span>
-              )}
+  if (gameType === 'assembler' && task) {
+    return (
+      <TaskShell hue="blue" progressIndex={taskIndex} total={TASKS_PER_ROUND} onBack={handleBack} onRepeat={handleRepeat}>
+        <div className="flex flex-col items-center justify-between h-full py-5 px-4">
+          <div className="flex flex-col items-center gap-3 flex-shrink-0">
+            <span className="text-6xl leading-none">{task.emoji}</span>
+            <button onClick={handleRepeat}
+              className="bg-gray-100 active:bg-gray-200 text-gray-600 font-semibold text-sm rounded-full px-5 py-2.5 active:scale-95 transition-transform">
+              🔊 Mondd újra
             </button>
-          ))}
+          </div>
+          <div className="flex gap-2 justify-center flex-shrink-0">
+            {task.syllables.map((_, i) => (
+              <div key={i}
+                style={{ animation: assemblerResult === 'wrong' && i < assembled.length ? 'shake-no 0.4s ease-out' : 'none' }}
+                className={['min-w-[64px] h-14 rounded-2xl border-4 flex items-center justify-center transition-all duration-200',
+                  i < assembled.length
+                    ? assemblerResult === 'correct' ? 'bg-green-400 border-green-300 shadow-lg'
+                      : assemblerResult === 'wrong'  ? 'bg-red-400 border-red-300'
+                      : 'bg-blue-100 border-blue-400 shadow-sm'
+                    : 'bg-gray-100 border-gray-300 border-dashed'].join(' ')}>
+                {i < assembled.length && <span className="text-2xl font-bold text-blue-900">{assembled[i]}</span>}
+              </div>
+            ))}
+          </div>
+          <div className="flex gap-3 flex-wrap justify-center flex-shrink-0">
+            {cards.map((card, i) => (
+              <button key={i} onClick={() => handleCardTap(i)}
+                disabled={card.placed || assemblerResult !== 'idle'}
+                style={{ borderRadius: 'var(--r-card)', boxShadow: card.placed ? 'none' : 'var(--sh-1)' }}
+                className={['min-w-[80px] h-20 flex items-center justify-center transition-all duration-200',
+                  card.placed ? 'bg-gray-100 border-2 border-gray-200 opacity-20 cursor-default'
+                    : 'bg-blue-500 active:bg-blue-400 active:scale-90'].join(' ')}>
+                {!card.placed && <span className="text-2xl font-bold text-white">{card.syllable}</span>}
+              </button>
+            ))}
+          </div>
         </div>
-      </div>
+        <RewardOverlay type={activeReward} rewardKey={rewardKey} mascotId={mascotId} />
+      </TaskShell>
+    )
+  }
 
-      <RewardOverlay type={activeReward} rewardKey={rewardKey} mascotId={mascotId} />
-    </div>
-  )
+  // ── RHYME ─────────────────────────────────────────────────────────────────
+
+  if (gameType === 'rhyme' && rhymeTask) {
+    return (
+      <TaskShell hue="blue" progressIndex={taskIndex} total={TASKS_PER_ROUND} onBack={handleBack} onRepeat={handleRepeat}>
+        <div className="flex flex-col items-center justify-between h-full py-5 px-4">
+
+          <div className="flex flex-col items-center gap-2 flex-shrink-0">
+            <span className="text-7xl leading-none">{rhymeTask.promptEmoji}</span>
+            <p className="text-blue-900 font-bold text-4xl tracking-widest">
+              {rhymeTask.promptSyllables.join(' · ')}
+            </p>
+            <p className="text-blue-700 font-semibold text-lg">Mi rímel erre?</p>
+          </div>
+
+          <div className="flex gap-3 w-full flex-shrink-0">
+            {rhymeOptions.map((opt, i) => {
+              const isSel = rhymeSelected === i
+              let cls = 'border-gray-200 bg-gray-50'
+              if (isSel && opt.isCorrect)  cls = 'border-green-400 bg-green-100 scale-105'
+              if (isSel && !opt.isCorrect) cls = 'border-red-400 bg-red-100'
+              if (rhymeResult !== 'idle' && !isSel) cls += ' opacity-40'
+              return (
+                <button key={i}
+                  onClick={() => { unlockAudio(); handleRhymeTap(i) }}
+                  disabled={rhymeResult !== 'idle'}
+                  style={{ borderRadius: 'var(--r-card)', boxShadow: 'var(--sh-1)',
+                    animation: isSel && !opt.isCorrect ? 'shake-no 0.5s ease-out' : 'none' }}
+                  className={`flex-1 flex flex-col items-center gap-2 py-5 border-4 transition-all duration-200 ${cls}`}>
+                  <span className="text-4xl leading-none">{opt.emoji}</span>
+                  <span className="text-xl font-bold text-blue-900 tracking-widest">
+                    {opt.syllables.join(' · ')}
+                  </span>
+                </button>
+              )
+            })}
+          </div>
+
+        </div>
+        <RewardOverlay type={activeReward} rewardKey={rewardKey} mascotId={mascotId} />
+      </TaskShell>
+    )
+  }
+
+  // ── WORD-PICTURE ──────────────────────────────────────────────────────────
+
+  if (gameType === 'wordpic' && wordPicTarget) {
+    return (
+      <TaskShell hue="blue" progressIndex={taskIndex} total={TASKS_PER_ROUND} onBack={handleBack} onRepeat={handleRepeat}>
+        <div className="flex flex-col items-center justify-between h-full py-5 px-4">
+
+          <div className="flex flex-col items-center gap-2 flex-shrink-0">
+            <span className="text-8xl leading-none">{wordPicTarget.emoji}</span>
+            <p className="text-blue-700 font-semibold text-lg">Melyik szó illik a képhez?</p>
+          </div>
+
+          <div className="flex flex-col gap-3 w-full flex-shrink-0">
+            {wordPicOptions.map((opt, i) => {
+              const isSel = wordPicSelected === i
+              let cls = 'border-gray-200 bg-gray-50'
+              if (isSel && opt.isCorrect)  cls = 'border-green-400 bg-green-100'
+              if (isSel && !opt.isCorrect) cls = 'border-red-400 bg-red-100'
+              if (wordPicResult !== 'idle' && !isSel) cls += ' opacity-40'
+              return (
+                <button key={i}
+                  onClick={() => { unlockAudio(); handleWordPicTap(i) }}
+                  disabled={wordPicResult !== 'idle'}
+                  style={{ borderRadius: 'var(--r-card)', boxShadow: 'var(--sh-1)',
+                    animation: isSel && !opt.isCorrect ? 'shake-no 0.5s ease-out' : 'none' }}
+                  className={`w-full py-5 border-4 flex items-center justify-center transition-all duration-200 ${cls}`}>
+                  <span className="text-2xl font-bold text-blue-900 tracking-widest">
+                    {opt.entry.syllables.join(' · ')}
+                  </span>
+                </button>
+              )
+            })}
+          </div>
+
+        </div>
+        <RewardOverlay type={activeReward} rewardKey={rewardKey} mascotId={mascotId} />
+      </TaskShell>
+    )
+  }
+
+  // ── LETTER-BUILD ──────────────────────────────────────────────────────────
+
+  if (gameType === 'letterbuild' && letterBuildWord) {
+    const wordUpper = letterBuildWord.word.toUpperCase()
+    return (
+      <TaskShell hue="blue" progressIndex={taskIndex} total={TASKS_PER_ROUND} onBack={handleBack} onRepeat={handleRepeat}>
+        <div className="flex flex-col items-center justify-between h-full py-5 px-4">
+
+          {/* Target word emoji or word label */}
+          <div className="flex flex-col items-center gap-2 flex-shrink-0">
+            {letterBuildWord.emoji
+              ? <span className="text-7xl leading-none">{letterBuildWord.emoji}</span>
+              : <p className="text-blue-900 font-bold text-4xl tracking-widest">{wordUpper}</p>}
+            <button onClick={handleRepeat}
+              className="bg-gray-100 active:bg-gray-200 text-gray-600 font-semibold text-sm rounded-full px-5 py-2.5 active:scale-95 transition-transform">
+              🔊 Mondd újra
+            </button>
+          </div>
+
+          {/* Slots */}
+          <div className="flex gap-4 justify-center flex-shrink-0">
+            {letterSlots.map((slot, i) => {
+              const expectedLetter = letterBuildWord.letters[i]
+              const isWrong   = slot.status === 'wrong'
+              const isCorrect = slot.status === 'correct'
+              const isEmpty   = slot.status === 'empty'
+              return (
+                <div key={i}
+                  style={{
+                    animation: isWrong ? 'shake-no 0.4s ease-out' : 'none',
+                    borderRadius: 'var(--r-card)',
+                    boxShadow: isCorrect ? '0 0 0 4px #4ade80' : isWrong ? '0 0 0 4px #f87171' : 'none',
+                  }}
+                  className={['w-20 h-20 border-4 flex items-center justify-center transition-all duration-200',
+                    isCorrect ? 'bg-green-100 border-green-400'
+                    : isWrong ? 'bg-red-100 border-red-400'
+                    : 'bg-gray-100 border-dashed border-gray-300'].join(' ')}>
+                  {/* Ghost letter for scaffold level 1 */}
+                  {isEmpty && letterBuildScaffold === 1 && (
+                    <span className="text-4xl font-bold text-gray-300 select-none">{expectedLetter}</span>
+                  )}
+                  {/* Placed letter */}
+                  {slot.letter && (
+                    <span className={['text-4xl font-bold select-none',
+                      isCorrect ? 'text-green-700' : 'text-red-600'].join(' ')}>
+                      {slot.letter}
+                    </span>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+
+          {/* Letter cards */}
+          <div className="flex gap-3 flex-wrap justify-center flex-shrink-0">
+            {letterCards.map((card, i) => (
+              <button key={i}
+                onClick={() => { unlockAudio(); handleLetterTap(i) }}
+                disabled={card.placed}
+                style={{ borderRadius: 'var(--r-card)', boxShadow: card.placed ? 'none' : 'var(--sh-1)' }}
+                className={['w-16 h-16 flex items-center justify-center transition-all duration-200 active:scale-90',
+                  card.placed
+                    ? 'bg-gray-100 border-2 border-gray-200 opacity-20 cursor-default'
+                    : 'bg-blue-500 active:bg-blue-400'].join(' ')}>
+                {!card.placed && (
+                  <span className="text-3xl font-bold text-white">{card.letter}</span>
+                )}
+              </button>
+            ))}
+          </div>
+
+        </div>
+        <RewardOverlay type={activeReward} rewardKey={rewardKey} mascotId={mascotId} />
+      </TaskShell>
+    )
+  }
+
+  return <div className="w-screen h-screen bg-blue-500" />
 }

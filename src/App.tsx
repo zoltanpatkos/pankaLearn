@@ -8,6 +8,7 @@ import { ReadingModule } from './screens/ReadingModule'
 import { EnglishModule } from './screens/EnglishModule'
 import { WritingModule } from './screens/WritingModule'
 import { ParentLock } from './screens/ParentLock'
+import { RoundCompleteOverlay, type RoundEndState } from './components/RoundCompleteOverlay'
 import type { MascotId } from './mascots'
 import {
   loadWardrobeState,
@@ -50,6 +51,7 @@ export default function App() {
   const [writingFlowers, setWritingFlowers] = useState(
     () => Number(localStorage.getItem('writingFlowers')) || 0
   )
+  const [roundEnd, setRoundEnd] = useState<RoundEndState | null>(null)
 
   useEffect(() => {
     const onChange = () => setIsFullscreen(!!document.fullscreenElement)
@@ -84,6 +86,8 @@ export default function App() {
     const next = Math.min(mathFlowers + 1, 8)
     localStorage.setItem('mathFlowers', String(next))
     setMathFlowers(next)
+    setRoundEnd({ hue: 'yellow', flowerEmoji: '🌷', flowerName: 'tulipán', moduleScreen: 'math', unlockedItemId })
+    setScreen('garden')
   }
 
   const handleReadingRoundComplete = (unlockedItemId: string | null): void => {
@@ -95,6 +99,8 @@ export default function App() {
     const next = Math.min(readingFlowers + 1, 8)
     localStorage.setItem('readingFlowers', String(next))
     setReadingFlowers(next)
+    setRoundEnd({ hue: 'blue', flowerEmoji: '🌻', flowerName: 'napraforgó', moduleScreen: 'reading', unlockedItemId })
+    setScreen('garden')
   }
 
   const handleWritingRoundComplete = (unlockedItemId: string | null): void => {
@@ -106,6 +112,8 @@ export default function App() {
     const next = Math.min(writingFlowers + 1, 8)
     localStorage.setItem('writingFlowers', String(next))
     setWritingFlowers(next)
+    setRoundEnd({ hue: 'purple', flowerEmoji: '🌹', flowerName: 'rózsa', moduleScreen: 'writing', unlockedItemId })
+    setScreen('garden')
   }
 
   const handleEnglishRoundComplete = (unlockedItemId: string | null): void => {
@@ -117,7 +125,17 @@ export default function App() {
     const next = Math.min(englishFlowers + 1, 8)
     localStorage.setItem('englishFlowers', String(next))
     setEnglishFlowers(next)
+    setRoundEnd({ hue: 'green', flowerEmoji: '🌺', flowerName: 'hibiszkusz', moduleScreen: 'english', unlockedItemId })
+    setScreen('garden')
   }
+
+  const handleRoundAgain = (): void => {
+    const mod = roundEnd?.moduleScreen
+    setRoundEnd(null)
+    if (mod) setScreen(mod)
+  }
+
+  const handleRoundStay = (): void => setRoundEnd(null)
 
   const lockedWardrobeItems = WARDROBE_ITEMS
     .filter(item => !wardrobeState.unlockedItems.includes(item.id))
@@ -206,6 +224,16 @@ export default function App() {
           lockedWardrobeItems={lockedWardrobeItems}
           onBack={() => setScreen('garden')}
           onRoundComplete={handleEnglishRoundComplete}
+        />
+      )}
+
+      {/* Round-end overlay — rendered on top of garden */}
+      {roundEnd && activeMascot && (
+        <RoundCompleteOverlay
+          data={roundEnd}
+          mascotId={activeMascot}
+          onPlayAgain={handleRoundAgain}
+          onStay={handleRoundStay}
         />
       )}
 

@@ -7,6 +7,15 @@ import { RewardOverlay } from '../components/RewardOverlay'
 import { useRewards } from '../hooks/useRewards'
 import { LETTER_DEFS, type LetterDef } from '../data/writingData'
 
+// Letters excluded from orient game — flip-x symmetric (flip-x = normal)
+const ORIENT_EXCLUDED = new Set(['I', 'T', 'H', 'O', 'A', 'V', 'M'])
+// Letters where rotate-180 = normal — only show 2 options (normal + flip-x)
+const ORIENT_2OPTION = new Set(['N', 'S', 'Z'])
+const ORIENT_LETTER_DEFS = LETTER_DEFS.filter(l => !ORIENT_EXCLUDED.has(l.letter))
+import { selectNextItems, recordAttempt } from '../lib/adaptive'
+import { ModuleSelect } from '../components/ModuleSelect'
+import { TaskShell } from '../components/TaskShell'
+
 interface Props {
   mascotId: MascotId
   lockedWardrobeItems: string[]
@@ -15,7 +24,7 @@ interface Props {
 }
 
 type GameType = 'trace' | 'orient'
-type Phase = 'select' | 'game' | 'round-end'
+type Phase = 'select' | 'game'
 type DirectionResult = 'idle' | 'correct' | 'wrong'
 
 const TASKS_PER_ROUND = 5
@@ -112,6 +121,7 @@ export function WritingModule({ mascotId, lockedWardrobeItems, onBack, onRoundCo
 
   // Refs — updated synchronously to avoid stale closures during pointer events
   const roundLettersRef   = useRef<LetterDef[]>([])
+  const gameTypeRef       = useRef<GameType>(gameType)
   const canvasRef         = useRef<HTMLCanvasElement>(null)
   const userStrokesRef    = useRef<{ x: number; y: number }[][]>([])
   const currentStrokeRef  = useRef<{ x: number; y: number }[]>([])
@@ -131,8 +141,9 @@ export function WritingModule({ mascotId, lockedWardrobeItems, onBack, onRoundCo
     confettiColors: ['#9333ea', '#a855f7', '#c084fc', '#6b21a8', '#ede9fe'],
   })
 
-  // Keep taskIndexRef in sync
+  // Keep refs in sync
   useEffect(() => { taskIndexRef.current = taskIndex }, [taskIndex])
+  useEffect(() => { gameTypeRef.current = gameType }, [gameType])
 
   // ── Canvas draw ─────────────────────────────────────────────────────────────
 
@@ -276,14 +287,28 @@ export function WritingModule({ mascotId, lockedWardrobeItems, onBack, onRoundCo
 
   // ── Task advance ────────────────────────────────────────────────────────────
 
+  const callRoundCompleteRef = useRef<() => void>(() => {})
+  callRoundCompleteRef.current = (): void => {
+    unlockAudio()
+    const unlocked = lockedWardrobeItems.length > 0
+      ? lockedWardrobeItems[Math.floor(Math.random() * lockedWardrobeItems.length)]
+      : null
+    if (unlocked) speak('Új ruha vár rád a szekrényben!')
+    onRoundComplete(unlocked)
+  }
+
   const doAdvance = useCallback((correct: boolean) => {
+    const letter = roundLettersRef.current[taskIndexRef.current]
+    if (letter) {
+      const tt = gameTypeRef.current === 'trace' ? 'writing.tracing' : 'writing.orientation'
+      recordAttempt(tt, letter.letter, correct)
+    }
     const nextIdx = taskIndexRef.current + 1
     if (nextIdx >= TASKS_PER_ROUND) {
-      setTimeout(() => { triggerMedium(); setPhase('round-end') }, 900)
+      setTimeout(() => { triggerMedium(); callRoundCompleteRef.current() }, 900)
     } else {
       setTimeout(() => setTaskIndex(nextIdx), 600)
     }
-    void correct
   }, [triggerMedium])
 
   const handleTraceNext = () => {
@@ -305,6 +330,8 @@ export function WritingModule({ mascotId, lockedWardrobeItems, onBack, onRoundCo
       speak(`Igen, így néz ki a ${roundLettersRef.current[taskIndexRef.current]?.letter} betű!`)
       doAdvance(true)
     } else {
+      const letter = roundLettersRef.current[taskIndexRef.current]
+      if (letter) recordAttempt('writing.orientation', letter.letter, false)
       setOrientResult('wrong')
       triggerError()
       speak('Ez tükörkép! Próbáld a másikat!')
@@ -326,7 +353,10 @@ export function WritingModule({ mascotId, lockedWardrobeItems, onBack, onRoundCo
   }, [redrawCanvas])
 
   const setupOrientTask = useCallback((letter: LetterDef) => {
-    const transforms: OrientTransform[] = shuffle(['normal', 'flip-x', 'rotate-180'] as OrientTransform[])
+    const pool: OrientTransform[] = ORIENT_2OPTION.has(letter.letter)
+      ? ['normal', 'flip-x']
+      : ['normal', 'flip-x', 'rotate-180']
+    const transforms = shuffle(pool)
     setOrientOptions(transforms.map(t => ({ transform: t, isCorrect: t === 'normal' })))
     setOrientSelected(null)
     setOrientResult('idle')
@@ -349,109 +379,41 @@ export function WritingModule({ mascotId, lockedWardrobeItems, onBack, onRoundCo
   const startRound = (gt: GameType) => {
     unlockAudio()
     setGameType(gt)
+    gameTypeRef.current = gt
     setTaskIndex(0)
     prevTaskRef.current = -1
-    const letters = shuffle(LETTER_DEFS).slice(0, TASKS_PER_ROUND)
-    roundLettersRef.current = letters
+    const tt = gt === 'trace' ? 'writing.tracing' : 'writing.orientation'
+    const pool = gt === 'trace' ? LETTER_DEFS : ORIENT_LETTER_DEFS
+    roundLettersRef.current = selectNextItems(tt, pool, l => l.letter, TASKS_PER_ROUND)
     setPhase('game')
-    if (gt === 'trace') setupTraceTask(letters[0])
-    else setupOrientTask(letters[0])
-  }
-
-  const handleRoundEnd = (again: boolean) => {
-    unlockAudio()
-    const unlocked = lockedWardrobeItems.length > 0
-      ? lockedWardrobeItems[Math.floor(Math.random() * lockedWardrobeItems.length)]
-      : null
-    onRoundComplete(unlocked)
-    if (unlocked) speak('Új ruha vár rád a szekrényben!')
-    if (again) {
-      startRound(gameType)
-    } else {
-      onBack()
-    }
+    // Setup is handled by the useEffect after state updates flush
   }
 
   const handleBack = () => { unlockAudio(); speak('Visszamegyünk a kertbe!'); setTimeout(onBack, 600) }
 
-  // ── Progress dots ───────────────────────────────────────────────────────────
-
-  const ProgressDots = (): JSX.Element => (
-    <div className="flex gap-2 flex-1 justify-center">
-      {Array.from({ length: TASKS_PER_ROUND }, (_, i) => (
-        <div key={i} className={[
-          'w-7 h-7 rounded-full border-2 transition-all duration-300',
-          i < taskIndex   ? 'bg-purple-400 border-purple-300 scale-110' :
-          i === taskIndex ? 'bg-purple-500 border-purple-400 scale-110' : 'bg-gray-200 border-gray-300',
-        ].join(' ')} />
-      ))}
-    </div>
-  )
+  const handleRepeat = (): void => {
+    const letter = roundLettersRef.current[taskIndex]
+    if (!letter) return
+    unlockAudio()
+    if (gameType === 'orient') speak(`Melyik a helyes ${letter.letter} betű?`)
+    else speak(letter.ttsInstruction)
+  }
 
   // ── SELECT ──────────────────────────────────────────────────────────────────
 
   if (phase === 'select') {
     return (
-      <div className="relative w-screen h-screen overflow-hidden select-none bg-gradient-to-b from-purple-600 via-purple-500 to-violet-400 flex flex-col">
-        <div className="mx-3 mt-3 bg-white/90 rounded-2xl shadow-lg flex items-center px-3 py-2.5 gap-3">
-          <button onClick={handleBack}
-            className="bg-purple-100 active:bg-purple-200 rounded-xl px-3 py-2 text-purple-900 font-bold text-base border border-purple-300 active:scale-95 transition-transform">
-            ← Kert
-          </button>
-          <h1 className="text-2xl font-black text-purple-800 drop-shadow-sm flex-1 text-center">✏️ Írás</h1>
-        </div>
-        <div className="flex flex-col items-center justify-center flex-1 gap-8 px-8 pb-8">
-          <div className="w-36 h-36 drop-shadow-xl"><Illustration /></div>
-          <p className="text-white font-bold text-2xl text-center drop-shadow">Melyik játékot választod?</p>
-          <div className="flex gap-5 w-full max-w-sm">
-            <button onClick={() => startRound('trace')}
-              className="flex-1 flex flex-col items-center gap-3 bg-purple-400 active:bg-purple-300 rounded-3xl py-6 shadow-2xl border-4 border-purple-300 active:scale-95 transition-transform">
-              <span className="text-5xl leading-none">✏️</span>
-              <span className="text-purple-900 font-bold text-xl text-center">Rajzold!</span>
-              <span className="text-purple-800 text-sm text-center px-2">Kövesd az ujjaddal!</span>
-            </button>
-            <button onClick={() => startRound('orient')}
-              className="flex-1 flex flex-col items-center gap-3 bg-violet-400 active:bg-violet-300 rounded-3xl py-6 shadow-2xl border-4 border-violet-300 active:scale-95 transition-transform">
-              <span className="text-5xl leading-none">🔍</span>
-              <span className="text-purple-900 font-bold text-xl text-center">Melyik jó?</span>
-              <span className="text-violet-800 text-sm text-center px-2">Mutasd a helyest!</span>
-            </button>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  // ── ROUND-END ───────────────────────────────────────────────────────────────
-
-  if (phase === 'round-end') {
-    return (
-      <div className="relative w-screen h-screen overflow-hidden select-none bg-gradient-to-b from-purple-700 to-violet-600 flex flex-col items-center justify-center gap-8 px-8">
-        <div className="relative flex items-center justify-center w-72 h-52">
-          <span className="absolute top-1 left-6 text-5xl select-none" style={{ animation: 'star-pop 0.7s ease-out 0.3s both' }}>⭐</span>
-          <span className="absolute top-2 right-6 text-4xl select-none" style={{ animation: 'star-pop 0.7s ease-out 0.5s both' }}>✨</span>
-          <span className="absolute bottom-1 left-10 text-4xl select-none" style={{ animation: 'star-pop 0.7s ease-out 0.6s both' }}>⭐</span>
-          <span className="absolute bottom-0 right-10 text-5xl select-none" style={{ animation: 'star-pop 0.7s ease-out 0.45s both' }}>✨</span>
-          <div className="text-[11rem] leading-none select-none" style={{ animation: 'star-pop 1s ease-out forwards', filter: 'drop-shadow(0 0 30px #c084fc)' }}>✏️</div>
-        </div>
-        <p className="text-white font-bold text-3xl text-center drop-shadow-lg">
-          {mascot.name} szerint<br />szuper voltál!
-        </p>
-        <div className="w-40 h-40 drop-shadow-2xl" style={{ animation: 'bounce-dance 0.5s ease-in-out infinite' }}>
-          <Illustration />
-        </div>
-        <div className="flex flex-col gap-4 w-full max-w-xs">
-          <button onClick={() => handleRoundEnd(true)}
-            className="bg-yellow-400 active:bg-yellow-300 active:scale-95 text-yellow-900 font-bold text-2xl rounded-3xl py-5 shadow-2xl border-4 border-yellow-300 transition-transform">
-            🔄 Még egy kör!
-          </button>
-          <button onClick={() => handleRoundEnd(false)}
-            className="bg-white/30 active:bg-white/50 active:scale-95 text-white font-bold text-xl rounded-3xl py-4 shadow-xl border-4 border-white/40 transition-transform">
-            🌳 Vissza a kertbe
-          </button>
-        </div>
-        <RewardOverlay type={activeReward} rewardKey={rewardKey} mascotId={mascotId} />
-      </div>
+      <ModuleSelect
+        hue="purple"
+        title="✏️ Írás"
+        Illustration={Illustration}
+        cards={[
+          { emoji: '✏️', label: 'Rajzold!',   sublabel: 'Kövesd az ujjaddal!', onClick: () => startRound('trace') },
+          { emoji: '🔍', label: 'Melyik jó?', sublabel: 'Mutasd a helyest!',   onClick: () => startRound('orient') },
+        ]}
+        onBack={handleBack}
+        onRepeat={() => speak('Melyik játékot választod?')}
+      />
     )
   }
 
@@ -462,40 +424,33 @@ export function WritingModule({ mascotId, lockedWardrobeItems, onBack, onRoundCo
   if (gameType === 'trace' && currentLetter) {
     const borderClass = traceResult === 'correct' ? 'border-green-400'
       : traceResult === 'wrong' ? 'border-red-400'
-      : 'border-white/80'
+      : 'border-gray-300'
     const statusText = traceResult === 'correct' ? '✓ Szuper indulás!'
       : traceResult === 'wrong' ? '↻ Próbáld újra!'
       : 'Rajzold!'
 
     return (
-      <div className="relative w-screen h-screen overflow-hidden select-none bg-gradient-to-b from-purple-600 via-purple-400 to-violet-300 flex flex-col">
-        <div className="mx-3 mt-3 bg-white/90 rounded-2xl shadow-lg flex items-center px-3 py-2.5 gap-3 flex-shrink-0">
-          <button onClick={handleBack}
-            className="bg-purple-100 active:bg-purple-200 rounded-xl px-3 py-2 text-purple-900 font-bold text-base border border-purple-300 active:scale-95 transition-transform">
-            ← Kert
-          </button>
-          <ProgressDots />
-          <div className="w-11 h-11 rounded-xl overflow-hidden border-2 border-purple-100 shadow flex-shrink-0">
-            <Illustration />
-          </div>
-        </div>
+      <TaskShell
+        hue="purple"
+        progressIndex={taskIndex}
+        total={TASKS_PER_ROUND}
+        onBack={handleBack}
+        onRepeat={handleRepeat}
+      >
+        <div className="flex flex-col items-center justify-between h-full py-4 px-4">
 
-        <div className="flex-1 flex flex-col items-center justify-between py-3 px-4 min-h-0">
-
-          {/* Letter + status */}
           <div className="flex items-center gap-3 flex-shrink-0">
-            <span className="text-white font-black text-5xl drop-shadow-lg">{currentLetter.letter}</span>
-            <span className="text-white/90 text-sm font-semibold bg-white/25 rounded-xl px-3 py-1">
+            <span className="text-purple-900 font-bold text-5xl">{currentLetter.letter}</span>
+            <span className="text-gray-600 text-sm font-semibold bg-gray-100 rounded-xl px-3 py-1">
               {statusText}
             </span>
           </div>
 
-          {/* Canvas */}
           <canvas
             ref={canvasRef}
             width={CANVAS_SIZE}
             height={CANVAS_SIZE}
-            className={`w-full max-w-[340px] aspect-square touch-none rounded-3xl shadow-2xl border-4 bg-white flex-shrink-0 ${borderClass}`}
+            className={`w-full max-w-[340px] aspect-square touch-none rounded-3xl shadow-md border-4 bg-white flex-shrink-0 ${borderClass}`}
             style={{ transition: 'border-color 0.2s' }}
             onPointerDown={handlePointerDown}
             onPointerMove={handlePointerMove}
@@ -503,21 +458,19 @@ export function WritingModule({ mascotId, lockedWardrobeItems, onBack, onRoundCo
             onPointerCancel={handlePointerUp}
           />
 
-          {/* Buttons */}
           <div className="flex gap-3 w-full max-w-[340px] flex-shrink-0">
             <button onClick={() => { unlockAudio(); clearCanvas() }}
-              className="flex-1 bg-white/40 active:bg-white/60 active:scale-95 text-white font-bold text-lg rounded-2xl py-3 border-2 border-white/50 transition-transform shadow">
+              className="flex-1 bg-gray-100 active:bg-gray-200 active:scale-95 text-gray-700 font-bold text-lg rounded-2xl py-3 border-2 border-gray-300 transition-transform">
               🗑️ Töröld!
             </button>
             <button onClick={() => { unlockAudio(); handleTraceNext() }}
-              className="flex-[2] bg-purple-600 active:bg-purple-500 active:scale-95 text-white font-bold text-xl rounded-2xl py-3 border-2 border-purple-400 transition-transform shadow-xl">
+              className="flex-[2] bg-purple-600 active:bg-purple-500 active:scale-95 text-white font-bold text-xl rounded-2xl py-3 border-2 border-purple-400 transition-transform shadow-lg">
               ⏭ Tovább
             </button>
           </div>
         </div>
-
         <RewardOverlay type={activeReward} rewardKey={rewardKey} mascotId={mascotId} />
-      </div>
+      </TaskShell>
     )
   }
 
@@ -526,20 +479,16 @@ export function WritingModule({ mascotId, lockedWardrobeItems, onBack, onRoundCo
   if (!currentLetter) return <div className="w-screen h-screen bg-purple-600" />
 
   return (
-    <div className="relative w-screen h-screen overflow-hidden select-none bg-gradient-to-b from-purple-600 via-violet-500 to-indigo-400 flex flex-col">
-      <div className="flex items-center px-4 pt-4 gap-3 flex-shrink-0">
-        <button onClick={handleBack}
-          className="bg-white/80 active:bg-white rounded-2xl px-4 py-2.5 text-purple-900 font-bold text-lg shadow border-2 border-white/60 active:scale-95 transition-transform">
-          ← Kert
-        </button>
-        <ProgressDots />
-        <div className="w-12 h-12 rounded-2xl overflow-hidden border-2 border-white/50 shadow flex-shrink-0">
-          <Illustration />
-        </div>
-      </div>
+    <TaskShell
+      hue="purple"
+      progressIndex={taskIndex}
+      total={TASKS_PER_ROUND}
+      onBack={handleBack}
+      onRepeat={handleRepeat}
+    >
+      <div className="flex flex-col items-center justify-center h-full gap-10 px-6">
 
-      <div className="flex-1 flex flex-col items-center justify-center gap-8 px-6 min-h-0">
-        <p className="text-white font-bold text-2xl text-center drop-shadow flex-shrink-0">
+        <p className="text-purple-900 font-bold text-2xl text-center flex-shrink-0">
           Melyik a jó <span className="text-5xl">{currentLetter.letter}</span> betű?
         </p>
 
@@ -547,7 +496,7 @@ export function WritingModule({ mascotId, lockedWardrobeItems, onBack, onRoundCo
           {orientOptions.map((opt, i) => {
             const isSel = orientSelected === i
             const isOk  = opt.isCorrect
-            let cls = 'border-white/60 bg-white'
+            let cls = 'border-gray-200 bg-gray-50'
             if (isSel && isOk)   cls = 'border-green-400 bg-green-100 scale-110'
             if (isSel && !isOk)  cls = 'border-red-400 bg-red-100'
             if (orientResult !== 'idle' && !isSel) cls += ' opacity-40'
@@ -556,7 +505,7 @@ export function WritingModule({ mascotId, lockedWardrobeItems, onBack, onRoundCo
                 onClick={() => { unlockAudio(); handleOrientTap(i) }}
                 disabled={orientResult !== 'idle'}
                 style={{ animation: isSel && !isOk ? 'shake-no 0.5s ease-out' : 'none' }}
-                className={`rounded-3xl border-4 shadow-xl transition-all duration-200 p-1 ${cls}`}
+                className={`rounded-3xl border-4 shadow-lg transition-all duration-200 p-1 ${cls}`}
               >
                 <LetterCanvas def={currentLetter} transform={opt.transform} size={120} />
               </button>
@@ -564,10 +513,8 @@ export function WritingModule({ mascotId, lockedWardrobeItems, onBack, onRoundCo
           })}
         </div>
 
-        <div className="h-4 flex-shrink-0" />
       </div>
-
       <RewardOverlay type={activeReward} rewardKey={rewardKey} mascotId={mascotId} />
-    </div>
+    </TaskShell>
   )
 }

@@ -1,3 +1,7 @@
+
+
+
+
 import type { JSX } from 'react'
 
 export type MascotId = 'balamber' | 'kifli' | 'bolyhos'
