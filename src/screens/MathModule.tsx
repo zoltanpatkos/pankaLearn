@@ -19,7 +19,7 @@ interface Props {
   onRoundComplete: (unlockedItemId: string | null) => void
 }
 
-type GameType = 'counting' | 'subitizing' | 'dienes' | 'balance' | 'tenPlus'
+type GameType = 'counting' | 'subitizing' | 'dienes' | 'balance' | 'tenPlus' | 'addition' | 'subtraction'
 type Phase = 'select' | 'game'
 
 const TASKS_PER_ROUND = 5
@@ -297,6 +297,124 @@ function tenPlusQuestion(task: TenPlusTask): string {
     : `Tíz meg ${HU_NUMS[task.small]}?`
 }
 
+// ── Addition / Subtraction ──────────────────────────────────────────────────
+
+// [addendMin, addendMax, sumMin, sumMax] per level
+const ADDITION_RANGES: Record<1 | 2 | 3, [number, number, number, number]> = {
+  1: [1, 3, 2, 5],
+  2: [2, 6, 6, 10],
+  3: [3, 9, 11, 15],
+}
+
+// [aMin, aMax, bMin, bMax] per level — result = a - b, always >= 1
+const SUBTRACTION_RANGES: Record<1 | 2 | 3, [number, number, number, number]> = {
+  1: [3, 5, 1, 3],
+  2: [6, 8, 2, 4],
+  3: [10, 12, 3, 5],
+}
+
+function additionPairs(level: 1 | 2 | 3): [number, number][] {
+  const [aMin, aMax, sMin, sMax] = ADDITION_RANGES[level]
+  const pairs: [number, number][] = []
+  for (let a = aMin; a <= aMax; a++) {
+    for (let b = a; b <= aMax; b++) {
+      if (a + b >= sMin && a + b <= sMax) pairs.push([a, b])
+    }
+  }
+  return pairs
+}
+
+function subtractionPairs(level: 1 | 2 | 3): [number, number][] {
+  const [aMin, aMax, bMin, bMax] = SUBTRACTION_RANGES[level]
+  const pairs: [number, number][] = []
+  for (let a = aMin; a <= aMax; a++) {
+    for (let b = bMin; b <= bMax; b++) {
+      if (b < a) pairs.push([a, b])
+    }
+  }
+  return pairs
+}
+
+// Distractors close to the correct result (±1, ±2) so the answer can't be
+// found by elimination against wildly different numbers.
+function makeCloseAnswers(correct: number): number[] {
+  const candidates = [correct - 2, correct - 1, correct + 1, correct + 2].filter(n => n >= 1)
+  return shuffle([correct, ...shuffle(candidates).slice(0, 3)])
+}
+
+const ADDITION_LEVEL_KEY    = 'additionLevelState'
+const SUBTRACTION_LEVEL_KEY = 'subtractionLevelState'
+
+function loadAdditionLevel(): StagedLevelState { return loadStagedLevel(ADDITION_LEVEL_KEY) }
+function advanceAdditionLevel(): StagedLevelState { return advanceStagedLevel(ADDITION_LEVEL_KEY, 'math.addition') }
+function loadSubtractionLevel(): StagedLevelState { return loadStagedLevel(SUBTRACTION_LEVEL_KEY) }
+function advanceSubtractionLevel(): StagedLevelState { return advanceStagedLevel(SUBTRACTION_LEVEL_KEY, 'math.subtraction') }
+
+interface AdditionTask { a: number; b: number; sum: number; emoji: string; plural: string; answers: number[] }
+interface SubtractionTask { a: number; b: number; result: number; emoji: string; answers: number[] }
+
+function generateAdditionTask(level: 1 | 2 | 3): AdditionTask {
+  const pairs = additionPairs(level)
+  const [a, b] = selectNextItem('math.addition', pairs, ([x, y]) => `${x}_${y}`)
+  const sum = a + b
+  const set = pickRandom(EMOJI_SETS)
+  return { a, b, sum, emoji: set.items[0], plural: set.plural, answers: makeCloseAnswers(sum) }
+}
+
+function generateSubtractionTask(level: 1 | 2 | 3): SubtractionTask {
+  const pairs = subtractionPairs(level)
+  const [a, b] = selectNextItem('math.subtraction', pairs, ([x, y]) => `${x}_${y}`)
+  return { a, b, result: a - b, emoji: pickRandom(EMOJI_SETS).items[0], answers: makeCloseAnswers(a - b) }
+}
+
+function EmojiGroup({ emoji, count, dimLast = 0 }: { emoji: string; count: number; dimLast?: number }): JSX.Element {
+  return (
+    <div className="flex flex-wrap gap-1 justify-center items-center" style={{ maxWidth: 160 }}>
+      {Array.from({ length: count }, (_, i) => {
+        const isRemoved = i >= count - dimLast
+        return (
+          <span key={i} className="relative inline-flex text-4xl leading-none" style={{
+            opacity: isRemoved ? 0.3 : 1,
+            transition: 'opacity 0.5s ease-in',
+          }}>
+            {emoji}
+            {isRemoved && (
+              <span aria-hidden="true" style={{
+                position: 'absolute', left: '-8%', right: '-8%', top: '50%', height: 3,
+                background: '#dc2626', borderRadius: 2, transform: 'translateY(-50%) rotate(-10deg)',
+              }} />
+            )}
+          </span>
+        )
+      })}
+    </div>
+  )
+}
+
+function OperatorSign({ symbol, color }: { symbol: string; color: string }): JSX.Element {
+  return <span className="font-black leading-none flex-shrink-0" style={{ fontSize: 44, color }}>{symbol}</span>
+}
+
+function QuestionCard(): JSX.Element {
+  return (
+    <div className="flex items-center justify-center flex-shrink-0" style={{
+      width: 56, height: 56, borderRadius: 'var(--r-card)', boxShadow: 'var(--sh-1)', background: 'white',
+    }}>
+      <span className="font-black text-yellow-900" style={{ fontSize: 32 }}>?</span>
+    </div>
+  )
+}
+
+function NumberCard({ value }: { value: number }): JSX.Element {
+  return (
+    <div className="flex items-center justify-center flex-shrink-0" style={{
+      width: 56, height: 56, borderRadius: 'var(--r-card)', boxShadow: 'var(--sh-1)', background: 'white',
+    }}>
+      <span className="font-black text-yellow-900" style={{ fontSize: 32 }}>{value}</span>
+    </div>
+  )
+}
+
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export function MathModule({ mascotId, lockedWardrobeItems, onBack, onRoundComplete }: Props): JSX.Element {
@@ -333,6 +451,18 @@ export function MathModule({ mascotId, lockedWardrobeItems, onBack, onRoundCompl
   const [tenPlusPlaced, setTenPlusPlaced] = useState<number | null>(null)
   const [tenPlusResult, setTenPlusResult] = useState<'idle' | 'correct' | 'wrong'>('idle')
   const tenPlusAnswering = useRef(false)
+
+  // Addition state
+  const [additionTask, setAdditionTask]         = useState<AdditionTask | null>(null)
+  const [additionSelected, setAdditionSelected] = useState<number | null>(null)
+  const additionAnswering = useRef(false)
+
+  // Subtraction state
+  const [subtractionTask, setSubtractionTask]                 = useState<SubtractionTask | null>(null)
+  const [subtractionSelected, setSubtractionSelected]         = useState<number | null>(null)
+  const [subtractionRemoving, setSubtractionRemoving]         = useState(false)
+  const [subtractionAnswersVisible, setSubtractionAnswersVisible] = useState(false)
+  const subtractionAnswering = useRef(false)
 
   const MATH_CONFETTI_COLORS = ['#fbbf24', '#f59e0b', '#fde68a', '#d97706', '#fffbeb']
 
@@ -554,6 +684,66 @@ export function MathModule({ mascotId, lockedWardrobeItems, onBack, onRoundCompl
     }
   }
 
+  // ── Addition ──────────────────────────────────────────────────────────────
+
+  const startAdditionTask = useCallback((level: 1 | 2 | 3): void => {
+    const t = generateAdditionTask(level)
+    setAdditionTask(t)
+    setAdditionSelected(null)
+    additionAnswering.current = false
+    speak(`Hány ${t.plural} van összesen?`)
+  }, [])
+
+  const handleAdditionAnswer = (n: number): void => {
+    if (additionAnswering.current || additionSelected !== null || !additionTask) return
+    additionAnswering.current = true
+    setAdditionSelected(n)
+    const itemId = `${additionTask.a}_${additionTask.b}`
+    if (n === additionTask.sum) {
+      recordAttempt('math.addition', itemId, true)
+      speak(`${HU_NUMS[additionTask.a]} meg ${HU_NUMS[additionTask.b]} az ${HU_NUMS[additionTask.sum]}!`)
+      const { level } = advanceAdditionLevel()
+      const ns = streak + 1; setStreak(ns)
+      advanceTask(ns, 1600, () => startAdditionTask(level))
+    } else {
+      recordAttempt('math.addition', itemId, false)
+      setStreak(0); triggerError()
+      setTimeout(() => { setAdditionSelected(null); additionAnswering.current = false }, 1400)
+    }
+  }
+
+  // ── Subtraction ───────────────────────────────────────────────────────────
+
+  const startSubtractionTask = useCallback((level: 1 | 2 | 3): void => {
+    const t = generateSubtractionTask(level)
+    setSubtractionTask(t)
+    setSubtractionSelected(null)
+    setSubtractionRemoving(false)
+    setSubtractionAnswersVisible(false)
+    subtractionAnswering.current = false
+    speak(`${HU_NUMS[t.a]} mínusz ${HU_NUMS[t.b]}. Hány marad?`)
+    setTimeout(() => setSubtractionRemoving(true), 600)
+    setTimeout(() => setSubtractionAnswersVisible(true), 1300)
+  }, [])
+
+  const handleSubtractionAnswer = (n: number): void => {
+    if (subtractionAnswering.current || subtractionSelected !== null || !subtractionTask) return
+    subtractionAnswering.current = true
+    setSubtractionSelected(n)
+    const itemId = `${subtractionTask.a}_${subtractionTask.b}`
+    if (n === subtractionTask.result) {
+      recordAttempt('math.subtraction', itemId, true)
+      speak(`${HU_NUMS[subtractionTask.a]} mínusz ${HU_NUMS[subtractionTask.b]}, az ${HU_NUMS[subtractionTask.result]}!`)
+      const { level } = advanceSubtractionLevel()
+      const ns = streak + 1; setStreak(ns)
+      advanceTask(ns, 1600, () => startSubtractionTask(level))
+    } else {
+      recordAttempt('math.subtraction', itemId, false)
+      setStreak(0); triggerError()
+      setTimeout(() => { setSubtractionSelected(null); subtractionAnswering.current = false }, 1400)
+    }
+  }
+
   // ── Navigation ────────────────────────────────────────────────────────────
 
   const handleStart = (gt: GameType): void => {
@@ -568,6 +758,10 @@ export function MathModule({ mascotId, lockedWardrobeItems, onBack, onRoundCompl
       startBalanceTask(pickBalanceTarget())
     } else if (gt === 'tenPlus') {
       startTenPlusTask(loadTenPlusLevel().level, true)
+    } else if (gt === 'addition') {
+      startAdditionTask(loadAdditionLevel().level)
+    } else if (gt === 'subtraction') {
+      startSubtractionTask(loadSubtractionLevel().level)
     } else {
       startTask(generateTask(gt, pickCount(gt)), gt)
     }
@@ -585,6 +779,10 @@ export function MathModule({ mascotId, lockedWardrobeItems, onBack, onRoundCompl
       speak(`${HU_NUMS[balanceTask.target]} ${balanceTask.emoji} van a bal oldalon. Tedd egyensúlyba!`)
     } else if (gameType === 'tenPlus' && tenPlusTask) {
       speak(tenPlusQuestion(tenPlusTask))
+    } else if (gameType === 'addition' && additionTask) {
+      speak(`Hány ${additionTask.plural} van összesen?`)
+    } else if (gameType === 'subtraction' && subtractionTask) {
+      speak(`${HU_NUMS[subtractionTask.a]} mínusz ${HU_NUMS[subtractionTask.b]}. Hány marad?`)
     } else if (task) {
       speak(gameType === 'counting' ? `Hány ${task.emojiSet.plural} van itt?` : 'Hány pötty villan fel?')
     }
@@ -604,6 +802,8 @@ export function MathModule({ mascotId, lockedWardrobeItems, onBack, onRoundCompl
           { emoji: '🧱', label: 'Rudak!',   sublabel: 'Melyik kettő ér ki?',    onClick: () => handleStart('dienes') },
           { emoji: '⚖️', label: 'Mérleg!',  sublabel: 'Tedd egyensúlyba!',      onClick: () => handleStart('balance') },
           { emoji: '🌟', label: '10-en felül', sublabel: '(7 éveseknek!)', special: true, onClick: () => handleStart('tenPlus') },
+          { emoji: '➕', label: 'Összeadás', sublabel: 'Adjuk össze!', onClick: () => handleStart('addition') },
+          { emoji: '➖', label: 'Kivonás',   sublabel: 'Vegyünk el!',   onClick: () => handleStart('subtraction') },
         ]}
         onBack={handleBack}
         onRepeat={() => speak('Melyik játékot választod?')}
@@ -872,6 +1072,88 @@ export function MathModule({ mascotId, lockedWardrobeItems, onBack, onRoundCompl
                 <RodBar value={v} unit={TEN_PLUS_ROD_UNIT} />
                 <span style={{ fontSize: 12, fontWeight: 700, color: '#78350f' }}>{v}</span>
               </button>
+            ))}
+          </div>
+
+        </div>
+        <RewardOverlay type={activeReward} rewardKey={rewardKey} mascotId={mascotId} />
+      </TaskShell>
+    )
+  }
+
+  // ── ADDITION ──────────────────────────────────────────────────────────────
+
+  if (gameType === 'addition' && additionTask) {
+    return (
+      <TaskShell hue="yellow" progressIndex={taskIndex} total={TASKS_PER_ROUND} onBack={handleBack} onRepeat={handleRepeat}>
+        <div className="flex flex-col items-center justify-between h-full py-5 px-4">
+
+          <p className="text-yellow-900 font-bold text-2xl text-center leading-snug px-2 flex-shrink-0">
+            Hány {additionTask.plural} van összesen?
+          </p>
+
+          <div className="flex-1 flex items-center justify-center w-full min-h-0">
+            <div className="flex items-center justify-center gap-3 flex-wrap">
+              <EmojiGroup emoji={additionTask.emoji} count={additionTask.a} />
+              <OperatorSign symbol="+" color="#16a34a" />
+              <EmojiGroup emoji={additionTask.emoji} count={additionTask.b} />
+              <OperatorSign symbol="=" color="#2563eb" />
+              <QuestionCard />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3 w-full flex-shrink-0">
+            {additionTask.answers.map(n => (
+              <AnswerButton key={n} hue="yellow"
+                state={additionSelected === n ? (n === additionTask.sum ? 'correct' : 'wrong') : 'idle'}
+                onClick={() => handleAdditionAnswer(n)}
+                className={['flex flex-col items-center justify-center gap-1 min-h-[80px]',
+                  additionSelected !== null && additionSelected !== n ? 'opacity-50' : ''].join(' ')}>
+                <span className="text-4xl font-bold leading-none">{n}</span>
+                <span className="text-base font-bold opacity-80">{HU_NUMS[n]}</span>
+              </AnswerButton>
+            ))}
+          </div>
+
+        </div>
+        <RewardOverlay type={activeReward} rewardKey={rewardKey} mascotId={mascotId} />
+      </TaskShell>
+    )
+  }
+
+  // ── SUBTRACTION ───────────────────────────────────────────────────────────
+
+  if (gameType === 'subtraction' && subtractionTask) {
+    return (
+      <TaskShell hue="yellow" progressIndex={taskIndex} total={TASKS_PER_ROUND} onBack={handleBack} onRepeat={handleRepeat}>
+        <div className="flex flex-col items-center justify-between h-full py-5 px-4">
+
+          <p className="text-yellow-900 font-bold text-2xl text-center leading-snug px-2 flex-shrink-0">
+            {HU_NUMS[subtractionTask.a]} mínusz {HU_NUMS[subtractionTask.b]}. Hány marad?
+          </p>
+
+          <div className="flex-1 flex items-center justify-center w-full min-h-0">
+            <div className="flex items-center justify-center gap-3 flex-wrap">
+              <EmojiGroup emoji={subtractionTask.emoji} count={subtractionTask.a}
+                dimLast={subtractionRemoving ? subtractionTask.b : 0} />
+              <OperatorSign symbol="−" color="#dc2626" />
+              <NumberCard value={subtractionTask.b} />
+              <OperatorSign symbol="=" color="#2563eb" />
+              <QuestionCard />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3 w-full flex-shrink-0 transition-opacity duration-300"
+            style={{ opacity: subtractionAnswersVisible ? 1 : 0, pointerEvents: subtractionAnswersVisible ? 'auto' : 'none' }}>
+            {subtractionTask.answers.map(n => (
+              <AnswerButton key={n} hue="yellow"
+                state={subtractionSelected === n ? (n === subtractionTask.result ? 'correct' : 'wrong') : 'idle'}
+                onClick={() => handleSubtractionAnswer(n)}
+                className={['flex flex-col items-center justify-center gap-1 min-h-[80px]',
+                  subtractionSelected !== null && subtractionSelected !== n ? 'opacity-50' : ''].join(' ')}>
+                <span className="text-4xl font-bold leading-none">{n}</span>
+                <span className="text-base font-bold opacity-80">{HU_NUMS[n]}</span>
+              </AnswerButton>
             ))}
           </div>
 
