@@ -284,6 +284,102 @@ const DIGRAPH_FEEDBACK_ENTRIES = Object.values(DIGRAPH_SYLLABLE).flatMap(syl => 
   hu(`Próbáld újra! Figyeld a ${syl} hangot!`),
 ])
 
+// ── 7b. Angol — Ellentétek + Hol van? (lásd src/screens/EnglishModule.tsx) ─────
+// A szövegeknek szó szerint egyezniük kell a képernyő playAudio() hívásaival
+// (a slug a szövegből generálódik) — ld. OPPOSITE_PAIRS / PREP_* a képernyőn.
+
+const cap = s => s.charAt(0).toUpperCase() + s.slice(1)
+
+// 12 ellentétpár: [a, aHu, b, bHu]
+const OPPOSITE_PAIRS_LOCAL = [
+  ['big', 'nagy', 'small', 'kicsi'],
+  ['hot', 'forró', 'cold', 'hideg'],
+  ['happy', 'boldog', 'sad', 'szomorú'],
+  ['fast', 'gyors', 'slow', 'lassú'],
+  ['tall', 'magas', 'short', 'alacsony'],
+  ['day', 'nappal', 'night', 'éjszaka'],
+  ['up', 'fent', 'down', 'lent'],
+  ['open', 'nyitott', 'closed', 'zárt'],
+  ['full', 'tele', 'empty', 'üres'],
+  ['clean', 'tiszta', 'dirty', 'piszkos'],
+  ['wet', 'nedves', 'dry', 'száraz'],
+  ['loud', 'hangos', 'quiet', 'csendes'],
+]
+
+// Kérdés — minden szó mindkét irányban (24 EN + 24 HU)
+const OPPOSITE_QUESTION_EN = OPPOSITE_PAIRS_LOCAL.flatMap(([a, , b]) => [
+  en(`Find the opposite! ${cap(a)}!`),
+  en(`Find the opposite! ${cap(b)}!`),
+])
+const OPPOSITE_QUESTION_HU = OPPOSITE_PAIRS_LOCAL.flatMap(([, aHu, , bHu]) => [
+  hu(`Keresd az ellentétét! ${cap(aHu)}!`),
+  hu(`Keresd az ellentétét! ${cap(bHu)}!`),
+])
+// Helyes válasz — a választott szó megerősítve (24)
+const OPPOSITE_WORD_EN = OPPOSITE_PAIRS_LOCAL.flatMap(([a, , b]) => [en(`${cap(a)}!`), en(`${cap(b)}!`)])
+// Pár-összefüggés kimondása (12 EN + 12 HU)
+const OPPOSITE_PAIR_EN = OPPOSITE_PAIRS_LOCAL.map(([a, , b]) => en(`${a} and ${b} — opposites!`))
+const OPPOSITE_PAIR_HU = OPPOSITE_PAIRS_LOCAL.map(([, aHu, , bHu]) => hu(`Igen! ${aHu} és ${bHu} — ellentétek!`))
+
+const OPPOSITES_ENTRIES = [
+  ...OPPOSITE_QUESTION_EN, ...OPPOSITE_QUESTION_HU,
+  ...OPPOSITE_WORD_EN, ...OPPOSITE_PAIR_EN, ...OPPOSITE_PAIR_HU,
+] // 24+24+24+12+12 = 96
+
+// Hol van? — tárgy/viszonyítási-tárgy párok + elöljárószók
+const PREP_ITEMS = [
+  { item: 'ball', itemHu: 'labda', ref: 'box', refEn: 'box' },
+  { item: 'cat', itemHu: 'cica', ref: 'chair', refEn: 'chair' },
+  { item: 'apple', itemHu: 'alma', ref: 'bowl', refEn: 'bowl' },
+]
+const PREPS = ['on', 'under', 'in', 'nextTo', 'behind']
+const PREP_EN_LOCAL = { on: 'on', under: 'under', in: 'in', nextTo: 'next to', behind: 'behind' }
+const PREP_PHRASE_HU_LOCAL = {
+  box:   { on: 'a doboz tetején', under: 'a doboz alatt', in: 'a dobozban', nextTo: 'a doboz mellett', behind: 'a doboz mögött' },
+  chair: { on: 'a szék tetején',  under: 'a szék alatt',  in: 'a székben',  nextTo: 'a szék mellett',  behind: 'a szék mögött' },
+  bowl:  { on: 'a tál tetején',   under: 'a tál alatt',   in: 'a tálban',   nextTo: 'a tál mellett',   behind: 'a tál mögött' },
+}
+// Csak a ténylegesen létező (tárgy, viszonyítási tárgy, helyes pozíció)
+// jelenetek — lásd PREP_SCENES a képernyőn (11 db)
+const PREP_CORRECT_SCENES = [
+  ['ball', 'box', 'on'], ['ball', 'box', 'under'], ['ball', 'box', 'in'], ['ball', 'box', 'nextTo'], ['ball', 'box', 'behind'],
+  ['cat', 'chair', 'on'], ['cat', 'chair', 'under'], ['cat', 'chair', 'nextTo'],
+  ['apple', 'bowl', 'in'], ['apple', 'bowl', 'nextTo'], ['apple', 'bowl', 'on'],
+]
+
+const PREP_WHERE_EN = PREP_ITEMS.map(p => en(`Where is the ${p.item}?`)) // 3
+
+// A csali teljesen véletlenszerű a maradék 4 elöljárószóból futásidőben,
+// ezért minden rendezett (helyes, csali) párra kell klip, objektumonként.
+const PREP_OPTIONS_EN = PREP_ITEMS.flatMap(p =>
+  PREPS.flatMap(correct => PREPS.filter(d => d !== correct).map(distractor =>
+    en(`Is it ${PREP_EN_LOCAL[correct]} the ${p.refEn}, or ${PREP_EN_LOCAL[distractor]} the ${p.refEn}?`)
+  ))
+) // 3 × 5×4 = 60
+
+const PREP_QUESTION_HU = PREP_ITEMS.flatMap(p =>
+  PREPS.flatMap(correct => PREPS.filter(d => d !== correct).map(distractor =>
+    hu(`Hol van ${p.itemHu}? ${PREP_PHRASE_HU_LOCAL[p.ref][correct]}, vagy ${PREP_PHRASE_HU_LOCAL[p.ref][distractor]}?`)
+  ))
+) // 60
+
+const PREP_YES_EN = PREPS.map(p => en(`Yes! ${cap(PREP_EN_LOCAL[p])}!`)) // 5
+
+const PREP_CONFIRM_EN = PREP_CORRECT_SCENES.map(([item, , pos]) => {
+  const p = PREP_ITEMS.find(x => x.item === item)
+  return en(`${cap(item)} is ${PREP_EN_LOCAL[pos]} the ${p.refEn}!`)
+}) // 11
+
+const PREP_CONFIRM_HU = PREP_CORRECT_SCENES.map(([item, ref, pos]) => {
+  const p = PREP_ITEMS.find(x => x.item === item)
+  return hu(`Igen! ${cap(p.itemHu)} ${PREP_PHRASE_HU_LOCAL[ref][pos]} van!`)
+}) // 11
+
+const PREPOSITIONS_ENTRIES = [
+  ...PREP_WHERE_EN, ...PREP_OPTIONS_EN, ...PREP_QUESTION_HU,
+  ...PREP_YES_EN, ...PREP_CONFIRM_EN, ...PREP_CONFIRM_HU,
+] // 3+60+60+5+11+11 = 150
+
 // ── 8. Matematika modul (25) ──────────────────────────────────────────────────
 
 const MATH_ENTRIES = [
@@ -553,6 +649,8 @@ export const AUDIO_ENTRIES = [
   ...LETTER_BUILD_WORD_ENTRIES,   // 14
   ...DIGRAPH_HINT_ENTRIES,        // 16
   ...DIGRAPH_FEEDBACK_ENTRIES,    // 12
+  ...OPPOSITES_ENTRIES,           // 96
+  ...PREPOSITIONS_ENTRIES,        // 150
   ...MATH_ENTRIES,                // 25
   ...TPR_EN_ENTRIES,              // 12
   ...TPR_HU_ENTRIES,              // 12

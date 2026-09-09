@@ -128,6 +128,33 @@ export const VOCABULARY: VocabWord[] = [
   { word: 'ball', hu: 'labda', emoji: '⚽', category: 'misc', enArticle: 'a', huArticle: 'a', accepted: ['ball', 'bal', 'bol'], skipPointer: true, skipMemory: true },
   { word: 'milk', hu: 'tej',   emoji: '🥛', category: 'misc', enArticle: '',  huArticle: 'a', accepted: ['milk', 'milkk', 'mil'], skipMemory: true },
   { word: 'big',  hu: 'nagy',  emoji: '📏', category: 'misc', enArticle: '',  huArticle: 'a', accepted: ['big', 'bik'], skipPointer: true, skipMemory: true },
+
+  // ── Opposites (NEW) — dedicated imagery for the Opposites game; some words
+  // overlap with other categories under a different, context-appropriate emoji.
+  { word: 'big',    hu: 'nagy',     emoji: '🐘',   category: 'opposites', enArticle: '', huArticle: 'a',  skipPointer: true, skipMemory: true },
+  { word: 'small',  hu: 'kicsi',    emoji: '🐭',   category: 'opposites', enArticle: '', huArticle: 'a',  skipPointer: true, skipMemory: true },
+  { word: 'hot',    hu: 'forró',    emoji: '☀️🔥', category: 'opposites', enArticle: '', huArticle: 'a',  skipPointer: true, skipMemory: true },
+  { word: 'cold',   hu: 'hideg',    emoji: '❄️🧊', category: 'opposites', enArticle: '', huArticle: 'a',  skipPointer: true, skipMemory: true },
+  { word: 'happy',  hu: 'boldog',   emoji: '😊',   category: 'opposites', enArticle: '', huArticle: 'a',  skipPointer: true, skipMemory: true },
+  { word: 'sad',    hu: 'szomorú',  emoji: '😢',   category: 'opposites', enArticle: '', huArticle: 'a',  skipPointer: true, skipMemory: true },
+  { word: 'fast',   hu: 'gyors',    emoji: '🐆',   category: 'opposites', enArticle: '', huArticle: 'a',  skipPointer: true, skipMemory: true },
+  { word: 'slow',   hu: 'lassú',    emoji: '🐢',   category: 'opposites', enArticle: '', huArticle: 'a',  skipPointer: true, skipMemory: true },
+  { word: 'tall',   hu: 'magas',    emoji: '🦒',   category: 'opposites', enArticle: '', huArticle: 'a',  skipPointer: true, skipMemory: true },
+  { word: 'short',  hu: 'alacsony', emoji: '🐛',   category: 'opposites', enArticle: '', huArticle: 'az', skipPointer: true, skipMemory: true },
+  { word: 'day',    hu: 'nappal',   emoji: '☀️',   category: 'opposites', enArticle: '', huArticle: 'a',  skipPointer: true, skipMemory: true },
+  { word: 'night',  hu: 'éjszaka',  emoji: '🌙',   category: 'opposites', enArticle: '', huArticle: 'az', skipPointer: true, skipMemory: true },
+  { word: 'up',     hu: 'fent',     emoji: '⬆️',   category: 'opposites', enArticle: '', huArticle: 'a',  skipPointer: true, skipMemory: true },
+  { word: 'down',   hu: 'lent',     emoji: '⬇️',   category: 'opposites', enArticle: '', huArticle: 'a',  skipPointer: true, skipMemory: true },
+  { word: 'open',   hu: 'nyitott',  emoji: '📖',   category: 'opposites', enArticle: '', huArticle: 'a',  skipPointer: true, skipMemory: true },
+  { word: 'closed', hu: 'zárt',     emoji: '📕',   category: 'opposites', enArticle: '', huArticle: 'a',  skipPointer: true, skipMemory: true },
+  { word: 'full',   hu: 'tele',     emoji: '🔋',   category: 'opposites', enArticle: '', huArticle: 'a',  skipPointer: true, skipMemory: true },
+  { word: 'empty',  hu: 'üres',     emoji: '🪫',   category: 'opposites', enArticle: '', huArticle: 'az', skipPointer: true, skipMemory: true },
+  { word: 'clean',  hu: 'tiszta',   emoji: '✨',   category: 'opposites', enArticle: '', huArticle: 'a',  skipPointer: true, skipMemory: true },
+  { word: 'dirty',  hu: 'piszkos',  emoji: '💩',   category: 'opposites', enArticle: '', huArticle: 'a',  skipPointer: true, skipMemory: true },
+  { word: 'wet',    hu: 'nedves',   emoji: '🌧️',   category: 'opposites', enArticle: '', huArticle: 'a',  skipPointer: true, skipMemory: true },
+  { word: 'dry',    hu: 'száraz',   emoji: '☀️',   category: 'opposites', enArticle: '', huArticle: 'a',  skipPointer: true, skipMemory: true },
+  { word: 'loud',   hu: 'hangos',   emoji: '📢',   category: 'opposites', enArticle: '', huArticle: 'a',  skipPointer: true, skipMemory: true },
+  { word: 'quiet',  hu: 'csendes',  emoji: '🤫',   category: 'opposites', enArticle: '', huArticle: 'a',  skipPointer: true, skipMemory: true },
 ]
 
 // ── Derived data helpers ──────────────────────────────────────────────────────

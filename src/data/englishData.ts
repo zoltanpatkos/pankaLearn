@@ -86,6 +86,28 @@ export const POINTER_TASKS: PointerTask[] = (() => {
   })
 })()
 
+// ── Opposites (self-contained — imagery-first, not derived from VOCABULARY) ───
+
+export interface OppositePair {
+  a: string; aHu: string; aEmoji: string
+  b: string; bHu: string; bEmoji: string
+}
+
+export const OPPOSITE_PAIRS: OppositePair[] = [
+  { a: 'big',   aHu: 'nagy',    aEmoji: '🐘',   b: 'small', bHu: 'kicsi',    bEmoji: '🐭' },
+  { a: 'hot',   aHu: 'forró',   aEmoji: '☀️🔥', b: 'cold',  bHu: 'hideg',    bEmoji: '❄️🧊' },
+  { a: 'happy', aHu: 'boldog',  aEmoji: '😊',   b: 'sad',   bHu: 'szomorú',  bEmoji: '😢' },
+  { a: 'fast',  aHu: 'gyors',   aEmoji: '🐆',   b: 'slow',  bHu: 'lassú',    bEmoji: '🐢' },
+  { a: 'tall',  aHu: 'magas',   aEmoji: '🦒',   b: 'short', bHu: 'alacsony', bEmoji: '🐛' },
+  { a: 'day',   aHu: 'nappal',  aEmoji: '☀️',   b: 'night', bHu: 'éjszaka',  bEmoji: '🌙' },
+  { a: 'up',    aHu: 'fent',    aEmoji: '⬆️',   b: 'down',  bHu: 'lent',     bEmoji: '⬇️' },
+  { a: 'open',  aHu: 'nyitott', aEmoji: '📖',   b: 'closed',bHu: 'zárt',     bEmoji: '📕' },
+  { a: 'full',  aHu: 'tele',    aEmoji: '🔋',   b: 'empty', bHu: 'üres',     bEmoji: '🪫' },
+  { a: 'clean', aHu: 'tiszta',  aEmoji: '✨',   b: 'dirty', bHu: 'piszkos',  bEmoji: '💩' },
+  { a: 'wet',   aHu: 'nedves',  aEmoji: '🌧️',   b: 'dry',   bHu: 'száraz',   bEmoji: '☀️' },
+  { a: 'loud',  aHu: 'hangos',  aEmoji: '📢',   b: 'quiet', bHu: 'csendes',  bEmoji: '🤫' },
+]
+
 // ── TPR verbs (unchanged — actions, not nouns) ────────────────────────────────
 
 export const TPR_VERBS: VerbEntry[] = [

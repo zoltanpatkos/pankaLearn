@@ -3,9 +3,10 @@ import type { JSX } from 'react'
 import { MASCOTS, type MascotId } from '../mascots'
 import { speak, speakTPR, speakEnglish, speakEnglishPraise, speakEnglishTwice, speakEnglishSuccess } from '../lib/tts'
 import { unlockAudio } from '../lib/audio'
+import { playAudio } from '../lib/audioPlayer'
 import { RewardOverlay } from '../components/RewardOverlay'
 import { useRewards } from '../hooks/useRewards'
-import { TPR_VERBS, POINTER_TASKS, SAY_IT_WORDS, getMemoryCategories, type VerbEntry, type PointerTask, type SayItWord } from '../data/englishData'
+import { TPR_VERBS, POINTER_TASKS, SAY_IT_WORDS, OPPOSITE_PAIRS, getMemoryCategories, type VerbEntry, type PointerTask, type SayItWord, type OppositePair } from '../data/englishData'
 import { selectNextItem, recordAttempt, getItemWeight } from '../lib/adaptive'
 import { ModuleSelect } from '../components/ModuleSelect'
 import { TaskShell } from '../components/TaskShell'
@@ -18,7 +19,7 @@ interface Props {
   onRoundComplete: (unlockedItemId: string | null) => void
 }
 
-type GameType = 'tpr' | 'pointer' | 'sayit' | 'feedmonster' | 'memory'
+type GameType = 'tpr' | 'pointer' | 'sayit' | 'feedmonster' | 'memory' | 'opposites' | 'prepositions'
 type Phase = 'select' | 'game'
 type SayItPhase = 'waiting' | 'listening' | 'correct' | 'wrong'
 type MonsterMood = 'hungry' | 'eating' | 'satisfied' | 'yuck'
@@ -110,6 +111,218 @@ function buildMemoryCards(): MemoryCard[] {
     ...selected.map(item => ({ id: `img_${item.word}`, pairId: item.word, type: 'image' as const, word: item.word, emoji: item.emoji, flipped: false, matched: false })),
     ...selected.map(item => ({ id: `snd_${item.word}`, pairId: item.word, type: 'sound' as const, word: item.word, emoji: item.emoji, flipped: false, matched: false })),
   ])
+}
+
+// ── Opposites data ─────────────────────────────────────────────────────────────
+
+interface OppositeCombo { pair: OppositePair; forward: boolean }
+
+const OPPOSITE_COMBOS: OppositeCombo[] = OPPOSITE_PAIRS.flatMap(pair => [
+  { pair, forward: true },
+  { pair, forward: false },
+])
+
+function oppositeComboId(c: OppositeCombo): string {
+  return `${c.pair.a}_${c.pair.b}_${c.forward ? 'forward' : 'backward'}`
+}
+
+interface OppositeTask {
+  id: string
+  startWord: string; startHu: string; startEmoji: string
+  pair: OppositePair
+  correctWord: string; correctHu: string; correctEmoji: string
+  distractorEmoji: string
+}
+
+function generateOppositeTask(): OppositeTask {
+  const combo = selectNextItem('english.opposites', OPPOSITE_COMBOS, oppositeComboId)
+  const { pair, forward } = combo
+  const start   = forward ? { w: pair.a, hu: pair.aHu, e: pair.aEmoji } : { w: pair.b, hu: pair.bHu, e: pair.bEmoji }
+  const correct = forward ? { w: pair.b, hu: pair.bHu, e: pair.bEmoji } : { w: pair.a, hu: pair.aHu, e: pair.aEmoji }
+  const distractorPool = OPPOSITE_PAIRS.filter(p => p !== pair)
+  const dp = distractorPool[Math.floor(Math.random() * distractorPool.length)]
+  const distractorEmoji = Math.random() < 0.5 ? dp.aEmoji : dp.bEmoji
+  return {
+    id: oppositeComboId(combo),
+    startWord: start.w, startHu: start.hu, startEmoji: start.e,
+    pair, correctWord: correct.w, correctHu: correct.hu, correctEmoji: correct.e,
+    distractorEmoji,
+  }
+}
+
+function capitalize(s: string): string { return s.charAt(0).toUpperCase() + s.slice(1) }
+
+// Plays each part in order via the pre-generated Azure clips (Howler),
+// falling back to live Web Speech per-part if a clip is missing — see
+// playAudio() in audioPlayer.ts. A short gap between clips reads more
+// naturally than back-to-back playback.
+async function playSequence(parts: { text: string; lang: 'hu-HU' | 'en-GB' }[], pauseMs = 400): Promise<void> {
+  for (let i = 0; i < parts.length; i++) {
+    await playAudio(parts[i].text, parts[i].lang)
+    if (i < parts.length - 1) await new Promise<void>(resolve => setTimeout(resolve, pauseMs))
+  }
+}
+
+// ── Prepositions data ─────────────────────────────────────────────────────────
+
+type Preposition = 'on' | 'under' | 'in' | 'nextTo' | 'behind'
+type PrepItem = 'ball' | 'cat' | 'apple'
+type PrepRef  = 'box' | 'chair' | 'bowl'
+
+interface PrepScene { item: PrepItem; ref: PrepRef; position: Preposition }
+
+// Only the object/position combinations that read unambiguously as a
+// simple flat illustration (a cat "in" a chair, or an apple "behind" a
+// bowl, wouldn't).
+const PREP_SCENES: PrepScene[] = [
+  { item: 'ball',  ref: 'box',   position: 'on' },
+  { item: 'ball',  ref: 'box',   position: 'under' },
+  { item: 'ball',  ref: 'box',   position: 'in' },
+  { item: 'ball',  ref: 'box',   position: 'nextTo' },
+  { item: 'ball',  ref: 'box',   position: 'behind' },
+  { item: 'cat',   ref: 'chair', position: 'on' },
+  { item: 'cat',   ref: 'chair', position: 'under' },
+  { item: 'cat',   ref: 'chair', position: 'nextTo' },
+  { item: 'apple', ref: 'bowl',  position: 'in' },
+  { item: 'apple', ref: 'bowl',  position: 'nextTo' },
+  { item: 'apple', ref: 'bowl',  position: 'on' },
+]
+
+const ALL_PREPOSITIONS: Preposition[] = ['on', 'under', 'in', 'nextTo', 'behind']
+
+const PREP_EN: Record<Preposition, string>   = { on: 'on', under: 'under', in: 'in', nextTo: 'next to', behind: 'behind' }
+const PREP_CARD: Record<Preposition, string> = { on: 'ON', under: 'UNDER', in: 'IN', nextTo: 'NEXT TO', behind: 'BEHIND' }
+const ITEM_EN: Record<PrepItem, string> = { ball: 'ball', cat: 'cat', apple: 'apple' }
+const ITEM_HU: Record<PrepItem, string> = { ball: 'labda', cat: 'cica', apple: 'alma' }
+const REF_EN: Record<PrepRef, string>   = { box: 'box', chair: 'chair', bowl: 'bowl' }
+
+// Hard-coded per (reference object, preposition) — avoids generating
+// Hungarian case-suffixes (e.g. dobozban/székben/tálban vowel harmony)
+// programmatically, same reasoning as the subtraction task's TTS.
+const PREP_PHRASE_HU: Record<PrepRef, Record<Preposition, string>> = {
+  box:   { on: 'a doboz tetején', under: 'a doboz alatt', in: 'a dobozban', nextTo: 'a doboz mellett', behind: 'a doboz mögött' },
+  chair: { on: 'a szék tetején',  under: 'a szék alatt',  in: 'a székben',  nextTo: 'a szék mellett',  behind: 'a szék mögött' },
+  bowl:  { on: 'a tál tetején',   under: 'a tál alatt',   in: 'a tálban',   nextTo: 'a tál mellett',   behind: 'a tál mögött' },
+}
+
+function prepSceneId(s: PrepScene): string { return `${s.item}_${s.position}` }
+
+interface PrepTask { id: string; scene: PrepScene; correct: Preposition; distractor: Preposition }
+
+function generatePrepTask(): PrepTask {
+  const scene = selectNextItem('english.prepositions', PREP_SCENES, prepSceneId)
+  const otherPreps = ALL_PREPOSITIONS.filter(p => p !== scene.position)
+  const distractor = otherPreps[Math.floor(Math.random() * otherPreps.length)]
+  return { id: prepSceneId(scene), scene, correct: scene.position, distractor }
+}
+
+// ── Prepositions illustration (flat SVG shapes, no emoji — spatial
+// relationships aren't legible as emoji at this size) ─────────────────────────
+
+const REF_SIZE: Record<PrepRef, { w: number; h: number }> = {
+  box:   { w: 92, h: 62 },
+  chair: { w: 70, h: 104 },
+  bowl:  { w: 112, h: 50 },
+}
+
+function BoxShape(): JSX.Element {
+  return (
+    <g>
+      <rect x={-46} y={-31} width={92} height={62} rx={4} fill="#b45309" stroke="#78350f" strokeWidth={3} />
+      <rect x={-46} y={-31} width={92} height={16} rx={4} fill="#92400e" stroke="#78350f" strokeWidth={3} />
+      <line x1={0} y1={-31} x2={0} y2={31} stroke="#78350f" strokeWidth={2} opacity={0.4} />
+    </g>
+  )
+}
+
+function ChairShape(): JSX.Element {
+  return (
+    <g>
+      <rect x={-30} y={-52} width={10} height={55} rx={3} fill="#92400e" stroke="#78350f" strokeWidth={2} />
+      <rect x={-33} y={0} width={66} height={12} rx={3} fill="#b45309" stroke="#78350f" strokeWidth={2} />
+      <rect x={-30} y={12} width={7} height={40} fill="#78350f" />
+      <rect x={23} y={12} width={7} height={40} fill="#78350f" />
+    </g>
+  )
+}
+
+function BowlShape(): JSX.Element {
+  return (
+    <g>
+      <path d="M -56,-6 Q -56,26 0,26 Q 56,26 56,-6 Z" fill="#e5e7eb" stroke="#9ca3af" strokeWidth={3} />
+      <ellipse cx={0} cy={-6} rx={56} ry={10} fill="#f3f4f6" stroke="#9ca3af" strokeWidth={3} />
+    </g>
+  )
+}
+
+function BallShape(): JSX.Element {
+  return (
+    <g>
+      <circle r={20} fill="#f97316" stroke="#c2410c" strokeWidth={3} />
+      <ellipse cx={-6} cy={-6} rx={6} ry={4} fill="#fed7aa" opacity={0.8} />
+    </g>
+  )
+}
+
+function CatShape(): JSX.Element {
+  return (
+    <g>
+      <ellipse cx={0} cy={8} rx={20} ry={16} fill="#f97316" stroke="#c2410c" strokeWidth={2.5} />
+      <circle cx={0} cy={-14} r={14} fill="#f97316" stroke="#c2410c" strokeWidth={2.5} />
+      <polygon points="-12,-24 -4,-8 -18,-10" fill="#f97316" stroke="#c2410c" strokeWidth={2} />
+      <polygon points="12,-24 4,-8 18,-10" fill="#f97316" stroke="#c2410c" strokeWidth={2} />
+      <circle cx={-5} cy={-14} r={2} fill="#1e293b" />
+      <circle cx={5} cy={-14} r={2} fill="#1e293b" />
+      <path d="M -3,-9 Q 0,-6 3,-9" stroke="#1e293b" strokeWidth={1.5} fill="none" />
+    </g>
+  )
+}
+
+function AppleShape(): JSX.Element {
+  return (
+    <g>
+      <circle r={16} fill="#ef4444" stroke="#b91c1c" strokeWidth={2.5} />
+      <path d="M 0,-16 Q 4,-24 10,-22" stroke="#78350f" strokeWidth={2.5} fill="none" strokeLinecap="round" />
+      <ellipse cx={8} cy={-20} rx={5} ry={3} fill="#4ade80" transform="rotate(30 8 -20)" />
+    </g>
+  )
+}
+
+function PrepIllustration({ item, refType, position }: { item: PrepItem; refType: PrepRef; position: Preposition }): JSX.Element {
+  const size = REF_SIZE[refType]
+  const RefComp  = refType === 'box' ? BoxShape : refType === 'chair' ? ChairShape : BowlShape
+  const ItemComp = item === 'ball' ? BallShape : item === 'cat' ? CatShape : AppleShape
+  const itemR = item === 'cat' ? 22 : item === 'ball' ? 20 : 16
+
+  let ix = 0, iy = 0, itemBehindRef = false
+  if (position === 'on') {
+    iy = -size.h / 2 - itemR + 6
+  } else if (position === 'under') {
+    iy = size.h / 2 - 6
+    itemBehindRef = true
+  } else if (position === 'in') {
+    iy = refType === 'bowl' ? -2 : 0
+  } else if (position === 'nextTo') {
+    ix = size.w / 2 + itemR + 16
+    iy = size.h / 2 - itemR * 0.7
+  } else if (position === 'behind') {
+    // Center the item right at the ref's edge so roughly half of it peeks
+    // out from behind — placing it fully inside the ref's bounding box
+    // would hide it completely once the ref is drawn on top.
+    ix = size.w / 2
+    iy = -size.h * 0.15
+    itemBehindRef = true
+  }
+
+  return (
+    <svg viewBox="0 0 240 200" style={{ width: '100%', maxWidth: 280, height: 'auto' }}>
+      <g transform="translate(120, 100)">
+        {itemBehindRef && <g transform={`translate(${ix}, ${iy})`}><ItemComp /></g>}
+        <RefComp />
+        {!itemBehindRef && <g transform={`translate(${ix}, ${iy})`}><ItemComp /></g>}
+      </g>
+    </svg>
+  )
 }
 
 // ── Monster SVG ───────────────────────────────────────────────────────────────
@@ -232,6 +445,18 @@ export function EnglishModule({ mascotId, lockedWardrobeItems, onBack, onRoundCo
   const [flippedIds, setFlippedIds]     = useState<string[]>([])
   const [matchedPairs, setMatchedPairs] = useState(0)
   const memoryLocked = useRef(false)
+
+  // Opposites state
+  const [oppositeTask, setOppositeTask]         = useState<OppositeTask | null>(null)
+  const [oppositeOptions, setOppositeOptions]   = useState<string[]>([])
+  const [oppositeSelected, setOppositeSelected] = useState<string | null>(null)
+  const [oppositeResult, setOppositeResult]     = useState<'idle' | 'correct' | 'wrong'>('idle')
+
+  // Prepositions state
+  const [prepTask, setPrepTask]         = useState<PrepTask | null>(null)
+  const [prepOptions, setPrepOptions]   = useState<Preposition[]>([])
+  const [prepSelected, setPrepSelected] = useState<Preposition | null>(null)
+  const [prepResult, setPrepResult]     = useState<'idle' | 'correct' | 'wrong'>('idle')
 
   const { activeReward, rewardKey, triggerMicro, triggerSmall, triggerMedium, triggerError } = useRewards({
     onTreeLevelUp: () => {},
@@ -502,6 +727,96 @@ export function EnglishModule({ mascotId, lockedWardrobeItems, onBack, onRoundCo
     }
   }
 
+  // ── Opposites ─────────────────────────────────────────────────────────────
+
+  const startOppositeTask = (): void => {
+    const t = generateOppositeTask()
+    setOppositeTask(t)
+    setOppositeOptions(shuffle([t.correctEmoji, t.distractorEmoji]))
+    setOppositeSelected(null)
+    setOppositeResult('idle')
+    void playSequence([
+      { text: `Find the opposite! ${capitalize(t.startWord)}!`, lang: 'en-GB' },
+      { text: `Keresd az ellentétét! ${capitalize(t.startHu)}!`, lang: 'hu-HU' },
+    ])
+  }
+
+  const handleOppositeTap = (emoji: string): void => {
+    if (oppositeResult !== 'idle' || !oppositeTask) return
+    setOppositeSelected(emoji)
+    if (emoji === oppositeTask.correctEmoji) {
+      recordAttempt('english.opposites', oppositeTask.id, true)
+      setOppositeResult('correct')
+      const ns = streak + 1; setStreak(ns)
+      // Reward hook fires first — it queues a generic Web Speech praise via
+      // speak(); playAudio() (inside playSequence) cancels that before it's
+      // audible, so only this task's own confirmation sequence plays.
+      if (ns >= STREAK_REWARD && ns % STREAK_REWARD === 0) triggerSmall(); else triggerMicro()
+      const nextIdx = taskIndex + 1
+      // Advance once the confirmation sequence actually finishes playing
+      // rather than after a guessed delay.
+      playSequence([
+        { text: `${capitalize(oppositeTask.correctWord)}!`, lang: 'en-GB' },
+        { text: `${oppositeTask.pair.a} and ${oppositeTask.pair.b} — opposites!`, lang: 'en-GB' },
+        { text: `Igen! ${oppositeTask.pair.aHu} és ${oppositeTask.pair.bHu} — ellentétek!`, lang: 'hu-HU' },
+      ]).then(() => {
+        setTimeout(() => {
+          if (nextIdx >= TASKS_PER_ROUND) { triggerMedium(); callRoundComplete() }
+          else { setTaskIndex(nextIdx); startOppositeTask() }
+        }, 600)
+      })
+    } else {
+      recordAttempt('english.opposites', oppositeTask.id, false)
+      setOppositeResult('wrong'); setStreak(0); triggerError()
+      setTimeout(() => { setOppositeSelected(null); setOppositeResult('idle') }, 1400)
+    }
+  }
+
+  // ── Prepositions ──────────────────────────────────────────────────────────
+
+  const startPrepTask = (): void => {
+    const t = generatePrepTask()
+    setPrepTask(t)
+    setPrepOptions(shuffle([t.correct, t.distractor]))
+    setPrepSelected(null)
+    setPrepResult('idle')
+    const { item, ref } = t.scene
+    void playSequence([
+      { text: `Where is the ${ITEM_EN[item]}?`, lang: 'en-GB' },
+      { text: `Is it ${PREP_EN[t.correct]} the ${REF_EN[ref]}, or ${PREP_EN[t.distractor]} the ${REF_EN[ref]}?`, lang: 'en-GB' },
+      { text: `Hol van ${ITEM_HU[item]}? ${PREP_PHRASE_HU[ref][t.correct]}, vagy ${PREP_PHRASE_HU[ref][t.distractor]}?`, lang: 'hu-HU' },
+    ])
+  }
+
+  const handlePrepTap = (prep: Preposition): void => {
+    if (prepResult !== 'idle' || !prepTask) return
+    setPrepSelected(prep)
+    const { item, ref } = prepTask.scene
+    if (prep === prepTask.correct) {
+      recordAttempt('english.prepositions', prepTask.id, true)
+      setPrepResult('correct')
+      const ns = streak + 1; setStreak(ns)
+      // Reward hook first (see handleOppositeTap for why) — playAudio's
+      // leading cancel() below silences its generic praise before it's heard.
+      if (ns >= STREAK_REWARD && ns % STREAK_REWARD === 0) triggerSmall(); else triggerMicro()
+      const nextIdx = taskIndex + 1
+      playSequence([
+        { text: `Yes! ${capitalize(PREP_EN[prepTask.correct])}!`, lang: 'en-GB' },
+        { text: `${capitalize(ITEM_EN[item])} is ${PREP_EN[prepTask.correct]} the ${REF_EN[ref]}!`, lang: 'en-GB' },
+        { text: `Igen! ${capitalize(ITEM_HU[item])} ${PREP_PHRASE_HU[ref][prepTask.correct]} van!`, lang: 'hu-HU' },
+      ]).then(() => {
+        setTimeout(() => {
+          if (nextIdx >= TASKS_PER_ROUND) { triggerMedium(); callRoundComplete() }
+          else { setTaskIndex(nextIdx); startPrepTask() }
+        }, 600)
+      })
+    } else {
+      recordAttempt('english.prepositions', prepTask.id, false)
+      setPrepResult('wrong'); setStreak(0); triggerError()
+      setTimeout(() => { setPrepSelected(null); setPrepResult('idle') }, 1400)
+    }
+  }
+
   // ── handleRepeat / handleStart ─────────────────────────────────────────────
 
   const handleRepeat = (): void => {
@@ -516,6 +831,18 @@ export function EnglishModule({ mascotId, lockedWardrobeItems, onBack, onRoundCo
       speakTPR(feedTask.english, feedTask.hungarian)
     } else if (gameType === 'memory') {
       speak('Keress párokat! Fordíts fel egy képkártyát és egy hangkártyát!')
+    } else if (gameType === 'opposites' && oppositeTask) {
+      void playSequence([
+        { text: `Find the opposite! ${capitalize(oppositeTask.startWord)}!`, lang: 'en-GB' },
+        { text: `Keresd az ellentétét! ${capitalize(oppositeTask.startHu)}!`, lang: 'hu-HU' },
+      ])
+    } else if (gameType === 'prepositions' && prepTask) {
+      const { item, ref } = prepTask.scene
+      void playSequence([
+        { text: `Where is the ${ITEM_EN[item]}?`, lang: 'en-GB' },
+        { text: `Is it ${PREP_EN[prepTask.correct]} the ${REF_EN[ref]}, or ${PREP_EN[prepTask.distractor]} the ${REF_EN[ref]}?`, lang: 'en-GB' },
+        { text: `Hol van ${ITEM_HU[item]}? ${PREP_PHRASE_HU[ref][prepTask.correct]}, vagy ${PREP_PHRASE_HU[ref][prepTask.distractor]}?`, lang: 'hu-HU' },
+      ])
     }
   }
 
@@ -526,6 +853,8 @@ export function EnglishModule({ mascotId, lockedWardrobeItems, onBack, onRoundCo
     else if (gt === 'sayit')       startSayItTask(selectNextItem('english.sayit', SAY_IT_WORDS, w => w.word))
     else if (gt === 'feedmonster') startFeedTask(selectNextItem('english.feedmonster', ALL_FEED_TASKS, t => t.id))
     else if (gt === 'memory')      startMemoryGame()
+    else if (gt === 'opposites')   startOppositeTask()
+    else if (gt === 'prepositions') startPrepTask()
   }
 
   // ── SELECT ────────────────────────────────────────────────────────────────
@@ -537,6 +866,8 @@ export function EnglishModule({ mascotId, lockedWardrobeItems, onBack, onRoundCo
       { emoji: '👾', label: 'Etesd meg!',  sublabel: 'Etess szörnyet angolul!', onClick: () => handleStart('feedmonster') },
       { emoji: '🎴', label: 'Párosítsd!', sublabel: 'Kép + hang párok!',       onClick: () => handleStart('memory') },
     ]
+    cards.push({ emoji: '🔄', label: 'Ellentétek', sublabel: 'Opposites', onClick: () => handleStart('opposites') })
+    cards.push({ emoji: '📦', label: 'Hol van?', sublabel: 'on, under, in...', onClick: () => handleStart('prepositions') })
     if (speechSupported) {
       cards.push({ emoji: '🎤', label: 'Mondd ki!', sublabel: 'Szólj angolul!', onClick: () => handleStart('sayit') })
     }
@@ -731,6 +1062,75 @@ export function EnglishModule({ mascotId, lockedWardrobeItems, onBack, onRoundCo
             {matchedPairs} / 4 pár megvan
           </p>
 
+        </div>
+        <RewardOverlay type={activeReward} rewardKey={rewardKey} mascotId={mascotId} />
+      </TaskShell>
+    )
+  }
+
+  // ── OPPOSITES GAME ────────────────────────────────────────────────────────
+
+  if (gameType === 'opposites' && oppositeTask) {
+    return (
+      <TaskShell hue="green" progressIndex={taskIndex} total={TASKS_PER_ROUND} onBack={handleBack} onRepeat={handleRepeat}>
+        <div className="flex flex-col items-center justify-between h-full py-6 px-4">
+          <div className="flex flex-col items-center gap-2 flex-shrink-0">
+            <span className="text-8xl leading-none">{oppositeTask.startEmoji}</span>
+            <p className="text-green-900 font-bold text-2xl text-center uppercase tracking-widest">{oppositeTask.startWord}</p>
+            <p className="text-green-700 font-semibold text-base text-center">Find the opposite!</p>
+          </div>
+          <div className="flex gap-4 w-full flex-shrink-0">
+            {oppositeOptions.map((emoji, i) => {
+              const isSelected = oppositeSelected === emoji
+              const isCorrect  = emoji === oppositeTask.correctEmoji
+              let cardClass = 'bg-gray-50 border-gray-200 active:bg-gray-100 active:scale-90'
+              if (isSelected && isCorrect)  cardClass = 'bg-green-400 border-green-300 scale-105'
+              if (isSelected && !isCorrect) cardClass = 'bg-red-400 border-red-300'
+              if (oppositeResult !== 'idle' && !isSelected) cardClass += ' opacity-40'
+              return (
+                <button key={i} onClick={() => { unlockAudio(); handleOppositeTap(emoji) }} disabled={oppositeResult !== 'idle'}
+                  style={{ animation: isSelected && !isCorrect ? 'shake-no 0.5s ease-out' : 'none', borderRadius: 'var(--r-card)', boxShadow: 'var(--sh-1)' }}
+                  className={['flex-1 h-32 border-4 flex items-center justify-center transition-all duration-200', cardClass].join(' ')}>
+                  <span className="text-6xl leading-none">{emoji}</span>
+                </button>
+              )
+            })}
+          </div>
+        </div>
+        <RewardOverlay type={activeReward} rewardKey={rewardKey} mascotId={mascotId} />
+      </TaskShell>
+    )
+  }
+
+  // ── PREPOSITIONS GAME ─────────────────────────────────────────────────────
+
+  if (gameType === 'prepositions' && prepTask) {
+    return (
+      <TaskShell hue="green" progressIndex={taskIndex} total={TASKS_PER_ROUND} onBack={handleBack} onRepeat={handleRepeat}>
+        <div className="flex flex-col items-center justify-between h-full py-5 px-4">
+          <p className="text-green-900 font-bold text-xl text-center leading-snug px-2 flex-shrink-0">
+            Where is the {ITEM_EN[prepTask.scene.item]}?
+          </p>
+          <div className="flex-1 flex items-center justify-center w-full min-h-0">
+            <PrepIllustration item={prepTask.scene.item} refType={prepTask.scene.ref} position={prepTask.scene.position} />
+          </div>
+          <div className="flex gap-4 w-full flex-shrink-0">
+            {prepOptions.map((prep, i) => {
+              const isSelected = prepSelected === prep
+              const isCorrect  = prep === prepTask.correct
+              let cardClass = 'bg-gray-50 border-gray-200 active:bg-gray-100 active:scale-90'
+              if (isSelected && isCorrect)  cardClass = 'bg-green-400 border-green-300 scale-105'
+              if (isSelected && !isCorrect) cardClass = 'bg-red-400 border-red-300'
+              if (prepResult !== 'idle' && !isSelected) cardClass += ' opacity-40'
+              return (
+                <button key={i} onClick={() => { unlockAudio(); handlePrepTap(prep) }} disabled={prepResult !== 'idle'}
+                  style={{ animation: isSelected && !isCorrect ? 'shake-no 0.5s ease-out' : 'none', borderRadius: 'var(--r-card)', boxShadow: 'var(--sh-1)' }}
+                  className={['flex-1 h-24 border-4 flex items-center justify-center transition-all duration-200', cardClass].join(' ')}>
+                  <span className="text-2xl font-black text-green-900 tracking-wide">{PREP_CARD[prep]}</span>
+                </button>
+              )
+            })}
+          </div>
         </div>
         <RewardOverlay type={activeReward} rewardKey={rewardKey} mascotId={mascotId} />
       </TaskShell>
