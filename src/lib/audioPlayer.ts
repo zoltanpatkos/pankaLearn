@@ -34,7 +34,7 @@ function slugFor(
 // String array az elérhető fájlnevekről kiterjesztés nélkül.
 
 const _available = new Set<string>()
-const _ready: Promise<void> = fetch('/audio/manifest.json')
+const _ready: Promise<void> = fetch(`${import.meta.env.BASE_URL}audio/manifest.json`)
   .then(r => r.json() as Promise<string[]>)
   .then(files => files.forEach(f => _available.add(f)))
   .catch(() => {}) // ha nincs manifest → minden Web Speech API fallback
@@ -45,7 +45,7 @@ const _howls = new Map<string, Howl>()
 
 function getHowl(slug: string): Howl {
   if (!_howls.has(slug)) {
-    _howls.set(slug, new Howl({ src: [`/audio/${slug}.mp3`] }))
+    _howls.set(slug, new Howl({ src: [`${import.meta.env.BASE_URL}audio/${slug}.mp3`] }))
   }
   return _howls.get(slug)!
 }

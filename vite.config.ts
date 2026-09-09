@@ -4,7 +4,10 @@ import tailwindcss from '@tailwindcss/vite'
 import { VitePWA } from 'vite-plugin-pwa'
 import { readFileSync } from 'fs'
 
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
+  // 'vite' (dev) runs in 'development' mode; both 'vite build' and
+  // 'vite preview' default to 'production', so this covers both.
+  base: mode === 'production' ? '/pankaLearn/' : '/',
   plugins: [
     react(),
     tailwindcss(),
@@ -15,7 +18,8 @@ export default defineConfig({
         type: 'module',
       },
       workbox: {
-        navigateFallback: '/',
+        globPatterns: ['**/*.{js,css,html,ico,png,svg,webmanifest,json,mp3}'],
+        maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
       },
       manifest: {
         name: 'PankaLearn',
@@ -26,8 +30,6 @@ export default defineConfig({
         background_color: '#f0fdf4',
         display: 'standalone',
         orientation: 'any',
-        scope: '/',
-        start_url: '/',
         icons: [
           {
             src: 'pwa-192x192.png',
@@ -63,4 +65,4 @@ export default defineConfig({
       cert: readFileSync('./192.168.0.243+2.pem'),
     },
   },
-})
+}))
