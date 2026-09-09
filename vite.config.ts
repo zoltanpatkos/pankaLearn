@@ -2,7 +2,17 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { VitePWA } from 'vite-plugin-pwa'
-import { readFileSync } from 'fs'
+import { existsSync, readFileSync } from 'fs'
+
+// Local HTTPS certs for testing on the tablet over wifi — gitignored, so
+// they don't exist in CI. https config is omitted there instead of crashing.
+const certsExist = existsSync('./192.168.0.243+2-key.pem') && existsSync('./192.168.0.243+2.pem')
+const localHttps = certsExist
+  ? {
+      key: readFileSync('./192.168.0.243+2-key.pem'),
+      cert: readFileSync('./192.168.0.243+2.pem'),
+    }
+  : undefined
 
 export default defineConfig(({ mode }) => ({
   // 'vite' (dev) runs in 'development' mode; both 'vite build' and
@@ -51,18 +61,12 @@ export default defineConfig(({ mode }) => ({
     host: true,
     port: 5173,
     strictPort: false,
-    https: {
-      key: readFileSync('./192.168.0.243+2-key.pem'),
-      cert: readFileSync('./192.168.0.243+2.pem'),
-    },
+    https: localHttps,
   },
   preview: {
     host: true,
     port: 4173,
     strictPort: false,
-    https: {
-      key: readFileSync('./192.168.0.243+2-key.pem'),
-      cert: readFileSync('./192.168.0.243+2.pem'),
-    },
+    https: localHttps,
   },
 }))
