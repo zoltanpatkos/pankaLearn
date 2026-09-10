@@ -10,7 +10,10 @@ export interface LetterDef {
   endX: number;   endY: number
   expectedAngle: number            // degrees: 0=right, 90=down, -90=up, ±180=left
   arrows: ArrowGuide[]
-  draw: (ctx: CanvasRenderingContext2D, s: number) => void
+  // w = canvas width in px; h = canvas height (defaults to w for the square
+  // print-letter/orient canvases — only the wide kötött-írás canvas passes
+  // both, since its font size scales with row height, not width).
+  draw: (ctx: CanvasRenderingContext2D, w: number, h?: number) => void
 }
 
 // All draw functions receive a context pre-configured with strokeStyle/lineWidth/lineCap.

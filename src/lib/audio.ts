@@ -1,6 +1,17 @@
+import { Howler } from 'howler'
+
+// Howler alapból 30 mp tétlenség után felfüggeszti a saját (a
+// pre-generált Azure klipeket lejátszó) AudioContext-jét, hogy spóroljon
+// az akkuval — mobil böngészőkön viszont nem mindig ébred fel megbízhatóan
+// utána, ami az "egy idő után elnémul minden hang, csak újraindítás
+// segít" jelenség egyik gyanúsítottja (lásd audioLog.ts). Egy gyerekeknek
+// szóló appnál a megbízhatóság többet ér, mint az akku-spórolás.
+Howler.autoSuspend = false
+
 let audioCtx: AudioContext | null = null
 
 export function unlockAudio(): void {
+  if (Howler.ctx?.state === 'suspended') void Howler.ctx.resume()
   if (audioCtx && audioCtx.state !== 'closed') {
     void audioCtx.resume()
     return

@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import type { JSX } from 'react'
 import { MASCOTS, type MascotId } from '../mascots'
-import { speak, speakTPR, speakEnglish, speakEnglishPraise, speakEnglishTwice, speakEnglishSuccess } from '../lib/tts'
+import { speak, speakTPR, speakEnglish, speakEnglishPraise, speakEnglishSuccess, speakSequence } from '../lib/tts'
 import { unlockAudio } from '../lib/audio'
 import { playAudio } from '../lib/audioPlayer'
 import { RewardOverlay } from '../components/RewardOverlay'
@@ -19,9 +19,10 @@ interface Props {
   onRoundComplete: (unlockedItemId: string | null) => void
 }
 
-type GameType = 'tpr' | 'pointer' | 'sayit' | 'feedmonster' | 'memory' | 'opposites' | 'prepositions'
+type GameType = 'tpr' | 'pointer' | 'sayit' | 'feedmonster' | 'memory' | 'opposites' | 'prepositions' | 'truefalse'
 type Phase = 'select' | 'game'
-type SayItPhase = 'waiting' | 'listening' | 'correct' | 'wrong'
+type SayItPhase = 'announcing' | 'waiting' | 'listening' | 'correct' | 'wrong'
+type TrueFalsePhase = 'narrating' | 'idle' | 'correct' | 'wrong'
 type MonsterMood = 'hungry' | 'eating' | 'satisfied' | 'yuck'
 
 const TASKS_PER_ROUND = 5
@@ -161,6 +162,64 @@ async function playSequence(parts: { text: string; lang: 'hu-HU' | 'en-GB' }[], 
     await playAudio(parts[i].text, parts[i].lang)
     if (i < parts.length - 1) await new Promise<void>(resolve => setTimeout(resolve, pauseMs))
   }
+}
+
+// ── True/False data ────────────────────────────────────────────────────────────
+// Egy kép, két mondat (igaz/hamis) — feladatonként véletlenszerűen az egyik
+// hangzik el, Panka dönti el, igaz-e a képre. 1. szint: egyszerű ige/melléknév
+// mondatok. (2-3. szint — összetettebb, kevésbé nyilvánvaló hamis mondatok —
+// még nincs felvéve, ezekhez külön tartalom kell majd.)
+//
+// Csak angolul hangzik el (nincs magyar fordítás felolvasva) — a
+// playSequence()-en (Howler + speakEnglish fallback) megy át, ugyanúgy,
+// mint az Ellentétek/Hol van? játékok angol mondatai, mert a nyers
+// speakSequence()-szel (közvetlen Web Speech, kézzel párosított hanggal)
+// előfordult, hogy a magyar hang szólalt meg az angol szövegre is.
+
+interface TrueFalseItem {
+  id: string
+  emoji: string
+  trueSentence: string
+  falseSentence: string
+}
+
+const TRUE_FALSE_ITEMS: TrueFalseItem[] = [
+  // cat/dog/girl/boy: a sima arc-emoji nem mutat mozgást (alvás/futás/tánc),
+  // csak arckifejezést — ezért kifejezés-alapú (happy/sad/smiling/crying)
+  // mondatpár, ami tényleg leolvasható a képről. bird/fish/turtle/elephant
+  // esetén az igaz mondat egy általános, a gyerek számára már ismert tény
+  // (a madár repül, a teknős lassú), nem a kép egy adott pillanata — ott
+  // nem az emoji "pózát" kell felismerni, hanem a tényt kell tudni.
+  { id: 'cat',      emoji: '🐱', trueSentence: 'The cat is happy.',     falseSentence: 'The cat is sad.' },
+  { id: 'dog',      emoji: '🐶', trueSentence: 'The dog is happy.',     falseSentence: 'The dog is sad.' },
+  { id: 'bird',     emoji: '🐦', trueSentence: 'The bird is flying.',    falseSentence: 'The bird is swimming.' },
+  { id: 'fish',     emoji: '🐟', trueSentence: 'The fish is swimming.',  falseSentence: 'The fish is jumping.' },
+  { id: 'girl',     emoji: '👧', trueSentence: 'The girl is happy.',    falseSentence: 'The girl is sad.' },
+  { id: 'apple',    emoji: '🍎', trueSentence: 'The apple is red.',      falseSentence: 'The apple is blue.' },
+  { id: 'sun',      emoji: '☀️', trueSentence: 'The sun is shining.',    falseSentence: 'The sun is raining.' },
+  { id: 'elephant', emoji: '🐘', trueSentence: 'The elephant is big.',   falseSentence: 'The elephant is small.' },
+  { id: 'turtle',   emoji: '🐢', trueSentence: 'The turtle is slow.',    falseSentence: 'The turtle is fast.' },
+  { id: 'rain',     emoji: '🌧️', trueSentence: 'It is raining.',        falseSentence: 'It is snowing.' },
+  { id: 'banana',   emoji: '🍌', trueSentence: 'The banana is yellow.', falseSentence: 'The banana is red.' },
+  { id: 'boy',      emoji: '👦', trueSentence: 'The boy is smiling.',   falseSentence: 'The boy is crying.' },
+]
+
+interface TrueFalseTask { item: TrueFalseItem; isTrue: boolean }
+
+function generateTrueFalseTask(): TrueFalseTask {
+  const item = selectNextItem('english.truefalse', TRUE_FALSE_ITEMS, i => i.id)
+  return { item, isTrue: Math.random() < 0.5 }
+}
+
+function tfSentence(t: TrueFalseTask): string {
+  return t.isTrue ? t.item.trueSentence : t.item.falseSentence
+}
+
+// Csak a mondat hangzik el — a "True or false?" kérdést nem mondjuk ki
+// (a gombokon már ott áll TRUE/FALSE felirattal, felesleges és csak
+// hosszabbá tette a szekvenciát).
+async function playTrueFalsePrompt(t: TrueFalseTask): Promise<void> {
+  await playAudio(tfSentence(t), 'en-GB')
 }
 
 // ── Prepositions data ─────────────────────────────────────────────────────────
@@ -458,6 +517,11 @@ export function EnglishModule({ mascotId, lockedWardrobeItems, onBack, onRoundCo
   const [prepSelected, setPrepSelected] = useState<Preposition | null>(null)
   const [prepResult, setPrepResult]     = useState<'idle' | 'correct' | 'wrong'>('idle')
 
+  // True/False state
+  const [tfTask, setTfTask]         = useState<TrueFalseTask | null>(null)
+  const [tfPhase, setTfPhase]       = useState<TrueFalsePhase>('narrating')
+  const [tfSelected, setTfSelected] = useState<boolean | null>(null)
+
   const { activeReward, rewardKey, triggerMicro, triggerSmall, triggerMedium, triggerError } = useRewards({
     onTreeLevelUp: () => {},
     confettiColors: ['#22c55e', '#4ade80', '#86efac', '#15803d', '#dcfce7'],
@@ -544,8 +608,14 @@ export function EnglishModule({ mascotId, lockedWardrobeItems, onBack, onRoundCo
   // ── Say-it ────────────────────────────────────────────────────────────────
 
   const startSayItTask = (w: SayItWord): void => {
-    setSayItTask(w); setSayItPhase('waiting'); setHeardText('')
-    speakEnglishTwice(w.word)
+    setSayItTask(w); setSayItPhase('announcing'); setHeardText('')
+    // A mikrofongomb 'announcing' alatt le van tiltva (lásd lent) — ha a
+    // gyerek a szó bemondása KÖZBEN nyomta volna meg, a startListening()
+    // elején lévő cancel() félbeszakította volna azt, ami versenyhelyzetet
+    // (és beragadt "Próbáld újra" állapotot) okozott. Most megvárjuk, míg
+    // a bemondás ténylegesen befejeződik, mielőtt engedjük a mikrofont.
+    void playSequence([{ text: w.word, lang: 'en-GB' }, { text: w.word, lang: 'en-GB' }], 500)
+      .then(() => setSayItPhase('waiting'))
   }
 
   const startListening = (): void => {
@@ -554,10 +624,9 @@ export function EnglishModule({ mascotId, lockedWardrobeItems, onBack, onRoundCo
     unlockAudio()
     recognitionRef.current?.abort()
     setHeardText(''); setSayItPhase('listening')
-    speak('Mondd hangosan!')
     const SR = (window as any).SpeechRecognition ?? (window as any).webkitSpeechRecognition
     let attempt = 0
-    const MAX_ATTEMPTS = 2
+    const MAX_ATTEMPTS = 3
     const tryOnce = (): void => {
       attempt++
       const recognition = new SR()
@@ -565,9 +634,12 @@ export function EnglishModule({ mascotId, lockedWardrobeItems, onBack, onRoundCo
       recognition.interimResults = false; recognition.maxAlternatives = 5
       recognitionRef.current = recognition
       let settled = false, retrying = false
+      const retry = (): void => {
+        retrying = true; recognition.abort(); tryOnce()
+      }
       const timer = setTimeout(() => {
         if (settled) return
-        if (attempt < MAX_ATTEMPTS) { retrying = true; recognition.abort(); tryOnce() }
+        if (attempt < MAX_ATTEMPTS) retry()
         else recognition.stop()
       }, 5000)
       recognition.onresult = (event: any): void => {
@@ -593,8 +665,13 @@ export function EnglishModule({ mascotId, lockedWardrobeItems, onBack, onRoundCo
         }
       }
       recognition.onerror = (event: any): void => {
-        clearTimeout(timer)
         if (event.error === 'aborted') return
+        clearTimeout(timer)
+        // "no-speech" (leggyakoribb ok: a gyerek még csak most kezdi kimondani
+        // a szót, mire a böngésző már jelzi, hogy egyelőre nem hallott semmit)
+        // — ez nem valódi hibás válasz, csak időzítési eset, ezért újrapróbáljuk,
+        // mielőtt tényleg "rossz"-nak jelölnénk.
+        if (event.error === 'no-speech' && attempt < MAX_ATTEMPTS) { retry(); return }
         settled = true; setHeardText('__error__'); setSayItPhase('wrong'); triggerError()
         setTimeout(() => setSayItPhase('waiting'), 2200)
       }
@@ -604,7 +681,28 @@ export function EnglishModule({ mascotId, lockedWardrobeItems, onBack, onRoundCo
       }
       recognition.start()
     }
-    setTimeout(tryOnce, 1000)
+    // Megvárjuk, míg a "Mondd hangosan!" felszólítás ténylegesen elhangzik,
+    // mielőtt élesítjük a mikrofont — korábban egy fix 1 mp-es várakozás volt
+    // a beszéd hossza helyett, ami miatt a gyerek gyakran még reagálni sem
+    // tudott, mire a felismerés már figyelt (és rögtön "nincs beszéd" hibát
+    // adott, ami azonnali "rossz"-ként jelent meg).
+    void speakSequence([{ text: 'Mondd hangosan!', lang: 'hu-HU' }]).then(tryOnce)
+  }
+
+  // Kihagyás — ha a beszédfelismerés nem működik jól az eszközön, a gyerek
+  // ne ragadjon be egy szónál. Nem számít se helyesnek, se hibásnak (nincs
+  // recordAttempt hívás), a streak sem törlődik — ez technikai kihagyás,
+  // nem hibás válasz.
+  const handleSkipSayIt = (): void => {
+    recognitionRef.current?.abort()
+    unlockAudio()
+    const nextIdx = taskIndex + 1
+    if (nextIdx >= TASKS_PER_ROUND) {
+      callRoundComplete()
+    } else {
+      setTaskIndex(nextIdx)
+      startSayItTask(selectNextItem('english.sayit', SAY_IT_WORDS, w => w.word))
+    }
   }
 
   // ── Feed Monster ──────────────────────────────────────────────────────────
@@ -772,6 +870,38 @@ export function EnglishModule({ mascotId, lockedWardrobeItems, onBack, onRoundCo
     }
   }
 
+  // ── True/False ───────────────────────────────────────────────────────────
+
+  const startTrueFalseTask = (): void => {
+    const t = generateTrueFalseTask()
+    setTfTask(t); setTfSelected(null); setTfPhase('narrating')
+    void playTrueFalsePrompt(t).then(() => setTfPhase('idle'))
+  }
+
+  const handleTrueFalseAnswer = (choice: boolean): void => {
+    if (tfPhase !== 'idle' || !tfTask) return
+    setTfSelected(choice)
+    const isCorrect = choice === tfTask.isTrue
+    recordAttempt('english.truefalse', tfTask.item.id, isCorrect)
+    if (isCorrect) {
+      setTfPhase('correct')
+      const ns = streak + 1; setStreak(ns)
+      if (ns >= STREAK_REWARD && ns % STREAK_REWARD === 0) triggerSmall(); else triggerMicro()
+      speakEnglishSuccess(choice ? 'True' : 'False')
+      const nextIdx = taskIndex + 1
+      setTimeout(() => {
+        if (nextIdx >= TASKS_PER_ROUND) { triggerMedium(); callRoundComplete() }
+        else { setTaskIndex(nextIdx); startTrueFalseTask() }
+      }, 2200)
+    } else {
+      setTfPhase('wrong'); setStreak(0); triggerError()
+      void playSequence([
+        { text: 'Listen again.', lang: 'en-GB' },
+        { text: tfSentence(tfTask), lang: 'en-GB' },
+      ]).then(() => { setTfSelected(null); setTfPhase('idle') })
+    }
+  }
+
   // ── Prepositions ──────────────────────────────────────────────────────────
 
   const startPrepTask = (): void => {
@@ -826,7 +956,13 @@ export function EnglishModule({ mascotId, lockedWardrobeItems, onBack, onRoundCo
     } else if (gameType === 'pointer' && pointerTask) {
       speakEnglish(pointerTask.englishQuestion)
     } else if (gameType === 'sayit' && sayItTask) {
-      speakEnglishTwice(sayItTask.word)
+      // Csak akkor tiltjuk a mikrofont az ismétlés alatt is, ha épp nem
+      // hallgat/eredményt mutat — ne szakítsunk félbe egy folyamatban lévő
+      // felismerést vagy visszajelzést.
+      const wasWaiting = sayItPhase === 'waiting'
+      if (wasWaiting) setSayItPhase('announcing')
+      void playSequence([{ text: sayItTask.word, lang: 'en-GB' }, { text: sayItTask.word, lang: 'en-GB' }], 500)
+        .then(() => { if (wasWaiting) setSayItPhase('waiting') })
     } else if (gameType === 'feedmonster' && feedTask) {
       speakTPR(feedTask.english, feedTask.hungarian)
     } else if (gameType === 'memory') {
@@ -843,6 +979,8 @@ export function EnglishModule({ mascotId, lockedWardrobeItems, onBack, onRoundCo
         { text: `Is it ${PREP_EN[prepTask.correct]} the ${REF_EN[ref]}, or ${PREP_EN[prepTask.distractor]} the ${REF_EN[ref]}?`, lang: 'en-GB' },
         { text: `Hol van ${ITEM_HU[item]}? ${PREP_PHRASE_HU[ref][prepTask.correct]}, vagy ${PREP_PHRASE_HU[ref][prepTask.distractor]}?`, lang: 'hu-HU' },
       ])
+    } else if (gameType === 'truefalse' && tfTask) {
+      void playTrueFalsePrompt(tfTask)
     }
   }
 
@@ -855,6 +993,7 @@ export function EnglishModule({ mascotId, lockedWardrobeItems, onBack, onRoundCo
     else if (gt === 'memory')      startMemoryGame()
     else if (gt === 'opposites')   startOppositeTask()
     else if (gt === 'prepositions') startPrepTask()
+    else if (gt === 'truefalse')   startTrueFalseTask()
   }
 
   // ── SELECT ────────────────────────────────────────────────────────────────
@@ -868,6 +1007,7 @@ export function EnglishModule({ mascotId, lockedWardrobeItems, onBack, onRoundCo
     ]
     cards.push({ emoji: '🔄', label: 'Ellentétek', sublabel: 'Opposites', onClick: () => handleStart('opposites') })
     cards.push({ emoji: '📦', label: 'Hol van?', sublabel: 'on, under, in...', onClick: () => handleStart('prepositions') })
+    cards.push({ emoji: '🤔', label: 'Igaz vagy hamis?', sublabel: 'Figyelj a mondatra!', onClick: () => handleStart('truefalse') })
     if (speechSupported) {
       cards.push({ emoji: '🎤', label: 'Mondd ki!', sublabel: 'Szólj angolul!', onClick: () => handleStart('sayit') })
     }
@@ -904,7 +1044,8 @@ export function EnglishModule({ mascotId, lockedWardrobeItems, onBack, onRoundCo
 
   if (gameType === 'sayit' && sayItTask) {
     const micLabel =
-      sayItPhase === 'listening' ? 'Hallgatom...'
+      sayItPhase === 'announcing' ? 'Figyelj...'
+      : sayItPhase === 'listening' ? 'Hallgatom...'
       : sayItPhase === 'correct' ? 'Helyes! 🎉'
       : sayItPhase === 'wrong'   ? 'Próbáld újra!'
       : 'Nyomd meg és mondd ki!'
@@ -921,7 +1062,7 @@ export function EnglishModule({ mascotId, lockedWardrobeItems, onBack, onRoundCo
             <p className="text-green-900 font-bold text-4xl tracking-widest uppercase">{sayItTask.word}</p>
           </div>
           <div className="flex flex-col items-center gap-4 flex-shrink-0">
-            <button onClick={startListening} disabled={sayItPhase === 'listening' || sayItPhase === 'correct'}
+            <button onClick={startListening} disabled={sayItPhase === 'announcing' || sayItPhase === 'listening' || sayItPhase === 'correct'}
               style={{ background: micBg, boxShadow: sayItPhase === 'listening' ? '0 0 0 14px rgba(249,115,22,0.22), var(--sh-1)' : 'var(--sh-1)',
                 animation: sayItPhase === 'listening' ? 'card-pulse 0.9s ease-in-out infinite' : 'none' }}
               className="w-28 h-28 rounded-full flex items-center justify-center text-5xl transition-all duration-300 active:scale-90 disabled:opacity-80">
@@ -929,16 +1070,22 @@ export function EnglishModule({ mascotId, lockedWardrobeItems, onBack, onRoundCo
             </button>
             <p className={['text-base font-semibold text-center min-h-[1.5rem]',
               sayItPhase === 'correct' ? 'text-green-600' : sayItPhase === 'wrong' ? 'text-red-500'
-              : sayItPhase === 'listening' ? 'text-orange-500' : 'text-gray-500'].join(' ')}>{micLabel}</p>
+              : sayItPhase === 'listening' || sayItPhase === 'announcing' ? 'text-orange-500' : 'text-gray-500'].join(' ')}>{micLabel}</p>
             {(sayItPhase === 'correct' || sayItPhase === 'wrong') && (
               <p className="text-sm text-gray-500 text-center font-medium">
                 {heardText === '__error__' ? 'Ezt hallottam: (nem érkezett hang)' : heardText === '' ? 'Nem hallottalak. Próbáld hangosabban!' : `Ezt hallottam: „${heardText}"`}
               </p>
             )}
           </div>
-          <button onClick={handleRepeat} className="bg-gray-100 active:bg-gray-200 text-gray-600 font-semibold text-sm rounded-full px-5 py-2.5 active:scale-95 transition-transform flex-shrink-0">
-            🔊 Hallgasd meg újra
-          </button>
+          <div className="flex gap-2 flex-shrink-0">
+            <button onClick={handleRepeat} className="bg-gray-100 active:bg-gray-200 text-gray-600 font-semibold text-sm rounded-full px-5 py-2.5 active:scale-95 transition-transform">
+              🔊 Hallgasd meg újra
+            </button>
+            <button onClick={handleSkipSayIt} disabled={sayItPhase === 'correct'}
+              className="bg-gray-100 active:bg-gray-200 text-gray-600 font-semibold text-sm rounded-full px-5 py-2.5 active:scale-95 transition-transform disabled:opacity-50">
+              ⏭ Kihagyom
+            </button>
+          </div>
         </div>
         <RewardOverlay type={activeReward} rewardKey={rewardKey} mascotId={mascotId} />
       </TaskShell>
@@ -1130,6 +1277,56 @@ export function EnglishModule({ mascotId, lockedWardrobeItems, onBack, onRoundCo
                 </button>
               )
             })}
+          </div>
+        </div>
+        <RewardOverlay type={activeReward} rewardKey={rewardKey} mascotId={mascotId} />
+      </TaskShell>
+    )
+  }
+
+  // ── TRUE/FALSE GAME ───────────────────────────────────────────────────────
+
+  if (gameType === 'truefalse' && tfTask) {
+    return (
+      <TaskShell hue="green" progressIndex={taskIndex} total={TASKS_PER_ROUND} onBack={handleBack} onRepeat={handleRepeat}>
+        <div className="flex flex-col items-center justify-between h-full py-6 px-4">
+          <div className="flex flex-col items-center gap-3 flex-shrink-0">
+            <span className="text-8xl leading-none">{tfTask.item.emoji}</span>
+            <p className={`font-semibold text-base text-center ${tfPhase === 'narrating' ? 'text-green-700 animate-pulse' : 'text-transparent'}`}>
+              Figyelj...
+            </p>
+          </div>
+          <div className="flex gap-4 w-full flex-shrink-0">
+            <button onClick={() => { unlockAudio(); handleTrueFalseAnswer(true) }} disabled={tfPhase !== 'idle'}
+              style={{
+                borderRadius: 'var(--r-card)', boxShadow: 'var(--sh-1)',
+                animation: tfSelected === true && tfPhase === 'wrong' ? 'shake-no 0.5s ease-out'
+                  : tfSelected === true && tfPhase === 'correct' ? 'correct-answer 0.4s ease-out' : 'none',
+              }}
+              className={[
+                'flex-1 h-32 border-4 flex flex-col items-center justify-center gap-1 text-white transition-all duration-200 active:scale-95 disabled:opacity-60',
+                'bg-green-500 border-green-400',
+                tfSelected === true && tfPhase !== 'idle' && tfPhase !== 'narrating' ? 'scale-105' : '',
+              ].join(' ')}>
+              <span className="text-5xl leading-none">✓</span>
+              <span className="text-lg font-black tracking-wide">TRUE</span>
+              <span className="text-xs font-semibold opacity-90">igaz</span>
+            </button>
+            <button onClick={() => { unlockAudio(); handleTrueFalseAnswer(false) }} disabled={tfPhase !== 'idle'}
+              style={{
+                borderRadius: 'var(--r-card)', boxShadow: 'var(--sh-1)',
+                animation: tfSelected === false && tfPhase === 'wrong' ? 'shake-no 0.5s ease-out'
+                  : tfSelected === false && tfPhase === 'correct' ? 'correct-answer 0.4s ease-out' : 'none',
+              }}
+              className={[
+                'flex-1 h-32 border-4 flex flex-col items-center justify-center gap-1 text-white transition-all duration-200 active:scale-95 disabled:opacity-60',
+                'bg-red-500 border-red-400',
+                tfSelected === false && tfPhase !== 'idle' && tfPhase !== 'narrating' ? 'scale-105' : '',
+              ].join(' ')}>
+              <span className="text-5xl leading-none">✗</span>
+              <span className="text-lg font-black tracking-wide">FALSE</span>
+              <span className="text-xs font-semibold opacity-90">hamis</span>
+            </button>
           </div>
         </div>
         <RewardOverlay type={activeReward} rewardKey={rewardKey} mascotId={mascotId} />

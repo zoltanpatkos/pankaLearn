@@ -1,5 +1,6 @@
 import { Howl } from 'howler'
-import { isMuted, speak, speakEnglish, speakSyllabified, speakDigraphHint } from './tts'
+import { isMuted, speakAwait, speakSyllabified, speakDigraphHint } from './tts'
+import { logAudioEvent } from './audioLog'
 
 // ── Slug (megegyezik a generateAudio.mjs toSlug logikájával) ─────────────────
 
@@ -40,30 +41,78 @@ const _ready: Promise<void> = fetch(`${import.meta.env.BASE_URL}audio/manifest.j
   .catch(() => {}) // ha nincs manifest → minden Web Speech API fallback
 
 // ── Howler cache ──────────────────────────────────────────────────────────────
-
+//
+// LRU-korlátos: a betöltött (dekódolt) klipek a memóriában maradnak, amíg a
+// Howl-példány létezik. Egy hosszabb angol-modul munkamenet közben könnyen
+// 100+ különböző szót/mondatot lejátszik a gyerek — korlát nélkül ez a
+// dekódolt hangpufferek korlátlan felhalmozódásához vezetne, ami a
+// gyanú szerint az "egy idő után elnémul minden hang" jelenség oka
+// (lásd MAX_HOWLS lent + a play() biztonsági időzítése).
+const MAX_HOWLS = 60
 const _howls = new Map<string, Howl>()
 
 function getHowl(slug: string): Howl {
-  if (!_howls.has(slug)) {
-    _howls.set(slug, new Howl({ src: [`${import.meta.env.BASE_URL}audio/${slug}.mp3`] }))
+  const existing = _howls.get(slug)
+  if (existing) {
+    // Frissen használt — kerüljön a Map végére (LRU: a legrégebben
+    // használt van elöl, azt dobjuk el elsőként).
+    _howls.delete(slug)
+    _howls.set(slug, existing)
+    return existing
   }
-  return _howls.get(slug)!
+  if (_howls.size >= MAX_HOWLS) {
+    const oldest = _howls.keys().next().value
+    if (oldest) {
+      _howls.get(oldest)?.unload()
+      _howls.delete(oldest)
+      logAudioEvent(`evict ${oldest} (cache full at ${MAX_HOWLS})`)
+    }
+  }
+  const howl = new Howl({ src: [`${import.meta.env.BASE_URL}audio/${slug}.mp3`] })
+  _howls.set(slug, howl)
+  return howl
 }
 
 // ── Web Speech API fallback ───────────────────────────────────────────────────
+// Awaitable — a syllabizált ág kivételével (speakSyllabified nem ad vissza
+// promise-t, ritkán használt hint-eset), hogy a hívó (playSequence stb.)
+// tényleg megvárja, míg a mondat elhangzik, mielőtt a következőre lépne.
 
-function wsFallback(
+async function wsFallback(
   text: string,
   lang: 'hu-HU' | 'en-GB',
   options?: { syllables?: string[] }
-): void {
+): Promise<void> {
   if (options?.syllables) {
     speakSyllabified(options.syllables, text)
-  } else if (lang === 'en-GB') {
-    speakEnglish(text)
-  } else {
-    speak(text)
+    return
   }
+  await speakAwait(text, lang)
+}
+
+// Lejátssza a howl-t, és 'end'-en, hibán, VAGY egy biztonsági időzítésen
+// (amelyik előbb bekövetkezik) felold — enélkül egy csendben elakadt
+// .play() (pl. a fenti cache-korlát nélkül felhalmozódott memórianyomás
+// miatt) örökre függve hagyná az őt váró playAudio()/playDigraphHint()
+// hívást, és minden utána jövő hang leállna vele (lásd MAX_HOWLS fent).
+const HOWL_TIMEOUT_MS = 8000
+
+function playHowlSafely(slug: string, howl: Howl, onFail: () => void): Promise<void> {
+  return new Promise(resolve => {
+    let done = false
+    const finish = (): void => { if (!done) { done = true; resolve() } }
+    howl.once('end', finish)
+    howl.once('loaderror', () => { logAudioEvent(`loaderror ${slug}`); onFail(); finish() })
+    howl.once('playerror', () => { logAudioEvent(`playerror ${slug}`); onFail(); finish() })
+    howl.play()
+    setTimeout(() => {
+      if (!done) {
+        logAudioEvent(`timeout ${slug} (cache size ${_howls.size})`)
+        onFail()
+        finish()
+      }
+    }, HOWL_TIMEOUT_MS)
+  })
 }
 
 // ── Fő API ───────────────────────────────────────────────────────────────────
@@ -93,16 +142,10 @@ export async function playAudio(
   const slug = slugFor(text, lang, type)
 
   if (_available.has(slug)) {
-    return new Promise(resolve => {
-      const howl = getHowl(slug)
-      howl.once('end', () => resolve())
-      howl.once('loaderror', () => { wsFallback(text, lang, options); resolve() })
-      howl.once('playerror', () => { wsFallback(text, lang, options); resolve() })
-      howl.play()
-    })
+    return playHowlSafely(slug, getHowl(slug), () => wsFallback(text, lang, options))
   }
 
-  wsFallback(text, lang, options)
+  await wsFallback(text, lang, options)
 }
 
 /**
@@ -115,13 +158,7 @@ export async function playDigraphHint(word: string, syllable: string): Promise<v
   await _ready
   const slug = `hu_dg_${toSlug(word)}`
   if (_available.has(slug)) {
-    return new Promise(resolve => {
-      const howl = getHowl(slug)
-      howl.once('end', () => resolve())
-      howl.once('loaderror', () => { speakDigraphHint(word, syllable); resolve() })
-      howl.once('playerror', () => { speakDigraphHint(word, syllable); resolve() })
-      howl.play()
-    })
+    return playHowlSafely(slug, getHowl(slug), () => speakDigraphHint(word, syllable))
   }
   speakDigraphHint(word, syllable)
 }

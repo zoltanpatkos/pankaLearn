@@ -2,6 +2,19 @@
 @import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&display=swap');
 @import "./styles/tokens.css";
 
+/* Magyar iskolai kötött írás — "Magyar Script Basic" by Zsoltai Kálmán,
+   License: Free for Personal Use (see https://betutipusok.hu/fonts/13128/
+   magyar_script_basic.html and http://irottmagyarabc.hupont.hu) — matches
+   the tankönyvi minta closely. Self-hosted so the Service Worker precaches
+   it for offline use, unlike the remote Fredoka import above. */
+@font-face {
+  font-family: 'Magyar Script Basic';
+  src: url('./assets/fonts/MagyarScriptBasic.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
 @theme {
   --font-sans: 'Fredoka', system-ui, sans-serif;
   --height-screen: 100dvh;

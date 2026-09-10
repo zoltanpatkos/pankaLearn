@@ -387,6 +387,23 @@ function speakOnePart(text: string, rate: number, voice: SpeechSynthesisVoice | 
   })
 }
 
+// Egyetlen mondat kimondása, VALÓDI várakozással a végére (onend/onerror/
+// biztonsági időzítés) — a speak()/speakEnglish() ezzel szemben "tüzelj és
+// felejtsd el" (nem ad vissza semmit), ami audioPlayer.ts playAudio()
+// wsFallback-jában azt okozta, hogy a hívó (pl. playSequence) már a
+// KÖVETKEZŐ mondatra lépett, miközben az előző még szólt — a második
+// speak() elején lévő cancel() néha levágta, néha (Android-flakiness)
+// egyáltalán nem hangzott el a második mondat. Ezt hívja audioPlayer.ts,
+// amikor egy szöveghez nincs előre legenerált klip.
+export async function speakAwait(text: string, lang: 'hu-HU' | 'en-GB', rate?: number): Promise<void> {
+  if (_muted) return
+  window.speechSynthesis.cancel()
+  const voice = lang === 'en-GB' ? getEnglishVoice() : getHungarianVoice()
+  const r = rate ?? (lang === 'en-GB' ? 0.8 : 0.85)
+  await speakOnePart(text, r, voice, lang)
+  if (!_muted) silentPad(voice)
+}
+
 // Speaks a mixed-language sequence, each part in its own voice (unlike
 // speakChained, which always uses the Hungarian voice regardless of the
 // text's language) — for prompts that switch between English and Hungarian.

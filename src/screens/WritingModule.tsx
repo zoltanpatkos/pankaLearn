@@ -6,6 +6,7 @@ import { unlockAudio } from '../lib/audio'
 import { RewardOverlay } from '../components/RewardOverlay'
 import { useRewards } from '../hooks/useRewards'
 import { LETTER_DEFS, type LetterDef } from '../data/writingData'
+import { buildCursiveLetterDefs, cursiveRuledLines, type CursiveCase } from '../data/cursiveLetterData'
 
 // Letters excluded from orient game — flip-x symmetric (flip-x = normal)
 const ORIENT_EXCLUDED = new Set(['I', 'T', 'H', 'O', 'A', 'V', 'M'])
@@ -23,12 +24,16 @@ interface Props {
   onRoundComplete: (unlockedItemId: string | null) => void
 }
 
-type GameType = 'trace' | 'orient'
+type GameType = 'trace' | 'orient' | 'cursive'
 type Phase = 'select' | 'game'
 type DirectionResult = 'idle' | 'correct' | 'wrong'
 
 const TASKS_PER_ROUND = 5
 const CANVAS_SIZE = 400
+// Kötött írás: füzetsorhoz hasonló, széles vászon (a nyomtatott nagybetűk
+// négyzet vászna helyett) — a betű mérete a magassághoz igazodik.
+const CURSIVE_W = 800
+const CURSIVE_H = 340
 const DIRECTION_TOLERANCE = 90   // degrees — generous for a 5-year-old
 const AUTO_ADVANCE_MS = 1500     // auto-advance after correct direction
 
@@ -130,6 +135,7 @@ export function WritingModule({ mascotId, lockedWardrobeItems, onBack, onRoundCo
   const traceResultRef    = useRef<DirectionResult>('idle')  // mirrors traceResult state
   const autoAdvanceRef    = useRef<ReturnType<typeof setTimeout> | null>(null)
   const taskIndexRef      = useRef(0)  // mirrors taskIndex for use inside timeouts
+  const cursiveCaseRef    = useRef<CursiveCase>('lower')
 
   const syncSetTraceResult = (v: DirectionResult) => {
     traceResultRef.current = v
@@ -150,10 +156,28 @@ export function WritingModule({ mascotId, lockedWardrobeItems, onBack, onRoundCo
   const redrawCanvas = useCallback((letter: LetterDef) => {
     const canvas = canvasRef.current
     if (!canvas) return
-    const s = CANVAS_SIZE
+    const isCursive = gameTypeRef.current === 'cursive'
+    const w = isCursive ? CURSIVE_W : CANVAS_SIZE
+    const h = isCursive ? CURSIVE_H : CANVAS_SIZE
+    const s = h // reference size for line thickness / dot radius — scales with row height
     const ctx = canvas.getContext('2d')!
-    const q = (v: number) => v / 100 * s
-    ctx.clearRect(0, 0, s, s)
+    const qx = (v: number) => v / 100 * w
+    const qy = (v: number) => v / 100 * h
+    ctx.clearRect(0, 0, w, h)
+
+    // Ruled baseline guides (kötött írás füzetvonalak) — alap-, közép- és tetővonal,
+    // a betűtípus tényleges arányaihoz igazítva (lásd cursiveRuledLines)
+    if (isCursive) {
+      ctx.save()
+      ctx.strokeStyle = '#bfdbfe'
+      ctx.lineWidth = Math.max(1, s * 0.004)
+      for (const y of cursiveRuledLines()) {
+        ctx.beginPath()
+        ctx.moveTo(qx(2), qy(y)); ctx.lineTo(qx(98), qy(y))
+        ctx.stroke()
+      }
+      ctx.restore()
+    }
 
     // Template letter (very light gray)
     ctx.save()
@@ -161,21 +185,24 @@ export function WritingModule({ mascotId, lockedWardrobeItems, onBack, onRoundCo
     ctx.lineWidth = s * 0.082
     ctx.lineCap = 'round'
     ctx.lineJoin = 'round'
-    letter.draw(ctx, s)
+    letter.draw(ctx, w, h)
     ctx.restore()
 
-    // Direction arrows
-    for (const arrow of letter.arrows) drawArrow(ctx, q(arrow.x), q(arrow.y), arrow.angle, s)
+    // Start/end dots + direction arrow — kötött írásnál nincs megbízható
+    // irány/kezdőpont-adat (lásd cursiveLetterData.ts), ott ezeket nem rajzoljuk.
+    if (!isCursive) {
+      // Start dot (green) — nyíl a pötty UTÁN, hogy ne fedje el, ha egymáshoz közel esnek
+      ctx.beginPath()
+      ctx.arc(qx(letter.startX), qy(letter.startY), s * 0.042, 0, Math.PI * 2)
+      ctx.fillStyle = '#22c55e'; ctx.fill()
 
-    // Start dot (green)
-    ctx.beginPath()
-    ctx.arc(q(letter.startX), q(letter.startY), s * 0.042, 0, Math.PI * 2)
-    ctx.fillStyle = '#22c55e'; ctx.fill()
+      // End dot (red)
+      ctx.beginPath()
+      ctx.arc(qx(letter.endX), qy(letter.endY), s * 0.034, 0, Math.PI * 2)
+      ctx.fillStyle = '#ef4444'; ctx.fill()
 
-    // End dot (red)
-    ctx.beginPath()
-    ctx.arc(q(letter.endX), q(letter.endY), s * 0.034, 0, Math.PI * 2)
-    ctx.fillStyle = '#ef4444'; ctx.fill()
+      for (const arrow of letter.arrows) drawArrow(ctx, qx(arrow.x), qy(arrow.y), arrow.angle, s)
+    }
 
     // Completed user strokes (purple — already committed)
     ctx.save()
@@ -227,8 +254,8 @@ export function WritingModule({ mascotId, lockedWardrobeItems, onBack, onRoundCo
     const canvas = canvasRef.current!
     const rect = canvas.getBoundingClientRect()
     return {
-      x: (e.clientX - rect.left) * (CANVAS_SIZE / rect.width),
-      y: (e.clientY - rect.top) * (CANVAS_SIZE / rect.height),
+      x: (e.clientX - rect.left) * (canvas.width / rect.width),
+      y: (e.clientY - rect.top) * (canvas.height / rect.height),
     }
   }
 
@@ -247,8 +274,11 @@ export function WritingModule({ mascotId, lockedWardrobeItems, onBack, onRoundCo
     const letter = roundLettersRef.current[taskIndexRef.current]
     if (!letter) return
     currentStrokeRef.current.push(getPos(e))
-    // Compute live direction for real-time line coloring (no TTS, no state changes)
-    directionRef.current = computeDirection(currentStrokeRef.current, letter.expectedAngle)
+    // Compute live direction for real-time line coloring (no TTS, no state changes).
+    // Kötött írásnál nincs megbízható irány-adat (lásd cursiveLetterData.ts),
+    // ott a vonal mindig semleges (lila) marad, "Tovább"-bal lép a gyerek.
+    directionRef.current = gameTypeRef.current === 'cursive' ? 'idle'
+      : computeDirection(currentStrokeRef.current, letter.expectedAngle)
     redrawCanvas(letter)
   }
 
@@ -300,7 +330,9 @@ export function WritingModule({ mascotId, lockedWardrobeItems, onBack, onRoundCo
   const doAdvance = useCallback((correct: boolean) => {
     const letter = roundLettersRef.current[taskIndexRef.current]
     if (letter) {
-      const tt = gameTypeRef.current === 'trace' ? 'writing.tracing' : 'writing.orientation'
+      const tt = gameTypeRef.current === 'trace' ? 'writing.tracing'
+        : gameTypeRef.current === 'cursive' ? `writing.cursive.${cursiveCaseRef.current}`
+        : 'writing.orientation'
       recordAttempt(tt, letter.letter, correct)
     }
     const nextIdx = taskIndexRef.current + 1
@@ -347,7 +379,14 @@ export function WritingModule({ mascotId, lockedWardrobeItems, onBack, onRoundCo
     currentStrokeRef.current = []
     directionRef.current = 'idle'
     syncSetTraceResult('idle')
-    setTimeout(() => redrawCanvas(letter), 30)
+    if (gameTypeRef.current === 'cursive') {
+      // Canvas fillText never waits for a webfont on its own — draw too early
+      // and it silently falls back to the system font instead of Magyar Script Basic
+      // (and never repaints once the real font arrives). Wait for it explicitly.
+      document.fonts.load('64px "Magyar Script Basic"').finally(() => redrawCanvas(letter))
+    } else {
+      setTimeout(() => redrawCanvas(letter), 30)
+    }
     // Speak instruction BEFORE drawing becomes active (speak is async, canvas shown after 30ms)
     speak(letter.ttsInstruction)
   }, [redrawCanvas])
@@ -370,20 +409,25 @@ export function WritingModule({ mascotId, lockedWardrobeItems, onBack, onRoundCo
     prevTaskRef.current = taskIndex
     const letter = roundLettersRef.current[taskIndex]
     if (!letter) return
-    if (gameType === 'trace') setupTraceTask(letter)
+    if (gameType === 'trace' || gameType === 'cursive') setupTraceTask(letter)
     else setupOrientTask(letter)
   }, [taskIndex, phase, gameType, setupTraceTask, setupOrientTask])
 
   // ── Round start / end ───────────────────────────────────────────────────────
 
-  const startRound = (gt: GameType) => {
+  const startRound = (gt: GameType, cursiveCase?: CursiveCase) => {
     unlockAudio()
     setGameType(gt)
     gameTypeRef.current = gt
+    cursiveCaseRef.current = cursiveCase ?? 'lower'
     setTaskIndex(0)
     prevTaskRef.current = -1
-    const tt = gt === 'trace' ? 'writing.tracing' : 'writing.orientation'
-    const pool = gt === 'trace' ? LETTER_DEFS : ORIENT_LETTER_DEFS
+    const tt = gt === 'trace' ? 'writing.tracing'
+      : gt === 'cursive' ? `writing.cursive.${cursiveCase ?? 'lower'}`
+      : 'writing.orientation'
+    const pool = gt === 'trace' ? LETTER_DEFS
+      : gt === 'cursive' ? buildCursiveLetterDefs(cursiveCase ?? 'lower')
+      : ORIENT_LETTER_DEFS
     roundLettersRef.current = selectNextItems(tt, pool, l => l.letter, TASKS_PER_ROUND)
     setPhase('game')
     // Setup is handled by the useEffect after state updates flush
@@ -408,8 +452,10 @@ export function WritingModule({ mascotId, lockedWardrobeItems, onBack, onRoundCo
         title="✏️ Írás"
         Illustration={Illustration}
         cards={[
-          { emoji: '✏️', label: 'Rajzold!',   sublabel: 'Kövesd az ujjaddal!', onClick: () => startRound('trace') },
-          { emoji: '🔍', label: 'Melyik jó?', sublabel: 'Mutasd a helyest!',   onClick: () => startRound('orient') },
+          { emoji: '✏️', label: 'Rajzold!',      sublabel: 'Kövesd az ujjaddal!',   onClick: () => startRound('trace') },
+          { emoji: '🔍', label: 'Melyik jó?',    sublabel: 'Mutasd a helyest!',     onClick: () => startRound('orient') },
+          { emoji: '🔡', label: 'Kötött írás',   sublabel: 'kisbetű',               onClick: () => startRound('cursive', 'lower') },
+          { emoji: '🔠', label: 'Kötött írás',   sublabel: 'NAGYBETŰ',              onClick: () => startRound('cursive', 'upper') },
         ]}
         onBack={handleBack}
         onRepeat={() => speak('Melyik játékot választod?')}
@@ -421,13 +467,15 @@ export function WritingModule({ mascotId, lockedWardrobeItems, onBack, onRoundCo
 
   // ── TRACE GAME ──────────────────────────────────────────────────────────────
 
-  if (gameType === 'trace' && currentLetter) {
+  if ((gameType === 'trace' || gameType === 'cursive') && currentLetter) {
+    const isCursive = gameType === 'cursive'
     const borderClass = traceResult === 'correct' ? 'border-green-400'
       : traceResult === 'wrong' ? 'border-red-400'
       : 'border-gray-300'
     const statusText = traceResult === 'correct' ? '✓ Szuper indulás!'
       : traceResult === 'wrong' ? '↻ Próbáld újra!'
       : 'Rajzold!'
+    const widthCapClass = isCursive ? 'max-w-[620px]' : 'max-w-[340px]'
 
     return (
       <TaskShell
@@ -448,17 +496,17 @@ export function WritingModule({ mascotId, lockedWardrobeItems, onBack, onRoundCo
 
           <canvas
             ref={canvasRef}
-            width={CANVAS_SIZE}
-            height={CANVAS_SIZE}
-            className={`w-full max-w-[340px] aspect-square touch-none rounded-3xl shadow-md border-4 bg-white flex-shrink-0 ${borderClass}`}
-            style={{ transition: 'border-color 0.2s' }}
+            width={isCursive ? CURSIVE_W : CANVAS_SIZE}
+            height={isCursive ? CURSIVE_H : CANVAS_SIZE}
+            className={`w-full ${widthCapClass} touch-none rounded-3xl shadow-md border-4 bg-white flex-shrink-0 ${borderClass}`}
+            style={{ transition: 'border-color 0.2s', aspectRatio: isCursive ? `${CURSIVE_W} / ${CURSIVE_H}` : '1 / 1' }}
             onPointerDown={handlePointerDown}
             onPointerMove={handlePointerMove}
             onPointerUp={handlePointerUp}
             onPointerCancel={handlePointerUp}
           />
 
-          <div className="flex gap-3 w-full max-w-[340px] flex-shrink-0">
+          <div className={`flex gap-3 w-full ${widthCapClass} flex-shrink-0`}>
             <button onClick={() => { unlockAudio(); clearCanvas() }}
               className="flex-1 bg-gray-100 active:bg-gray-200 active:scale-95 text-gray-700 font-bold text-lg rounded-2xl py-3 border-2 border-gray-300 transition-transform">
               🗑️ Töröld!
